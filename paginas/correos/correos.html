@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor y Generador de Correos Electrónicos</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS (xlsx.full.min.js) para exportación e importación real de Excel .xlsx -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            dark: '#006837',
+                            light: '#52B043',
+                            glow: 'rgba(82, 176, 67, 0.25)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos personalizados para scrollbar y efectos glassmorphism */
+        body {
+            background-color: #090d16;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(0, 104, 55, 0.18) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(82, 176, 67, 0.12) 0px, transparent 45%),
+                radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.9) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: #f8fafc;
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.55);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .brand-gradient {
+            background: linear-gradient(135deg, #006837 0%, #52B043 100%);
+        }
+
+        .brand-gradient-hover:hover {
+            background: linear-gradient(135deg, #007a41 0%, #5ec44d 100%);
+            box-shadow: 0 0 20px rgba(82, 176, 67, 0.35);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #52B043;
+        }
+    </style>
+<style>
+body:not(.autenticado) header, body:not(.autenticado) main { display: none !important; }
+body.autenticado #login-overlay { display: none !important; }
+#sesion-info { display: none; margin-left: auto; align-items: center; gap: 10px; }
+body.autenticado #sesion-info { display: flex; }
+.pibe-btn { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.pibe-btn:hover { background: #334155; }
+</style>
+<link rel="manifest" href="../../manifest.json">
+<meta name="theme-color" content="#006837">
+<link rel="icon" href="../../imagenes/iconos/icono_correos.png">
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-[#52B043] selection:text-slate-950">
+<style>
+#pibe-nav{background:#0b1220;border-bottom:1px solid rgba(82,176,67,.35);font-family:Inter,system-ui,sans-serif}
+#pibe-nav .in{max-width:80rem;margin:0 auto;padding:8px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+#pibe-nav a.back,#pibe-fab{display:inline-flex;align-items:center;gap:8px;background:#006837;color:#fff;font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;text-decoration:none;border:1px solid #52B043;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+#pibe-nav a.back:hover,#pibe-fab:hover{background:#52B043;color:#04130a}
+#pibe-nav .t{color:#fff;font-weight:700;font-size:13px}#pibe-nav .d{color:#94a3b8;font-size:12px}
+#pibe-fab{position:fixed;left:16px;bottom:16px;z-index:60}
+@media(max-width:640px){#pibe-nav .d{display:none}}
+@media print{#pibe-nav,#pibe-fab{display:none!important}}
+</style>
+<div id="pibe-nav"><div class="in">
+<a class="back" href="../../index.html">← Volver al Inicio</a>
+<span class="t">Correos Electrónicos</span><span class="d">Crea, edita y exporta las cuentas de correo de la empresa.</span>
+<span id="sesion-info"><span id="sesion-nombre" style="color:#cbd5e1;font-size:12px"></span><button type="button" id="btn-panel-usuarios" class="pibe-btn" style="display:none" onclick="abrirPanelUsuarios()">👥 Usuarios</button><button type="button" class="pibe-btn" onclick="cerrarSesionCorreos()">Cerrar sesión</button></span></div></div>
+<a id="pibe-fab" href="../../index.html" title="Volver al Inicio">← Inicio</a>
+
+
+    <!-- PANTALLA DE ACCESO (solo área de Sistemas) -->
+    <div id="login-overlay" class="fixed inset-0 z-[55] flex items-center justify-center p-4 bg-[#090d16]">
+        <div class="glass-card rounded-3xl w-full max-w-sm p-8 border border-slate-800/90">
+            <div class="flex flex-col items-center text-center mb-6">
+                <img src="../../imagenes/iconos/icono_correos.png" alt="Inventario de Correos" class="w-24 h-24 rounded-2xl shadow-lg mb-4">
+                <h2 class="text-xl font-extrabold text-white">Correos Electrónicos</h2>
+                <p class="text-xs text-slate-400 mt-1">Acceso exclusivo del área de Sistemas</p>
+            </div>
+            <form id="login-form" onsubmit="iniciarSesionCorreos(event)" class="space-y-4">
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1.5">Usuario</label>
+                    <input type="text" id="login-user" required autocomplete="username" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white focus:outline-none focus:border-[#52B043]"></div>
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1.5">Contraseña</label>
+                    <input type="password" id="login-pass" required autocomplete="current-password" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white focus:outline-none focus:border-[#52B043]"></div>
+                <p id="login-error" class="hidden text-xs text-rose-400 font-semibold"></p>
+                <button type="submit" class="w-full py-2.5 rounded-xl brand-gradient brand-gradient-hover text-white font-bold text-sm shadow-lg cursor-pointer">Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notificación Toast Flotante -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Encabezado Principal -->
+    <header class="sticky top-0 z-30 glass-card border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                
+                <!-- Título y Logo -->
+                <div class="flex items-center gap-3.5">
+                    <img src="../../imagenes/iconos/icono_correos.png" alt="Inventario de Correos" class="w-12 h-12 rounded-xl shadow-lg shadow-emerald-950/50 shrink-0">
+                    <div>
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                            Gestor y Generador de Correos Electrónicos
+                            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-[#52B043] border border-emerald-500/30">
+                                Corporativo & Externo
+                            </span>
+                        </h1>
+                        <p class="text-xs text-slate-400">Administración centralizada, creación inteligente y respaldo local</p>
+                    </div>
+                </div>
+
+                <!-- Contadores Rápidos y Respaldo JSON -->
+                <div class="flex flex-wrap items-center justify-between sm:justify-end gap-3">
+                    <!-- Contadores -->
+                    <div class="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+                        <div class="px-3 py-1 rounded-lg bg-slate-800/70 text-center">
+                            <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Total</span>
+                            <span id="stat-total" class="text-sm font-bold text-white">0</span>
+                        </div>
+                        <div class="px-3 py-1 rounded-lg bg-emerald-950/40 border border-emerald-800/30 text-center">
+                            <span class="block text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">Corporativos</span>
+                            <span id="stat-corp" class="text-sm font-bold text-[#52B043]">0</span>
+                        </div>
+                        <div class="px-3 py-1 rounded-lg bg-sky-950/40 border border-sky-800/30 text-center">
+                            <span class="block text-[10px] uppercase tracking-wider text-sky-400 font-semibold">Externos</span>
+                            <span id="stat-ext" class="text-sm font-bold text-sky-300">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Botones Exportar / Importar Excel (.xlsx) -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" onclick="descargarPlantillaExcel()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-all cursor-pointer" title="Descargar plantilla vacía .xlsx con columnas listas">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-amber-400"></i>
+                            <span class="hidden sm:inline">Plantilla .xlsx</span>
+                        </button>
+                        <button type="button" onclick="exportarExcel(false)" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-950/80 hover:bg-emerald-900/90 text-[#52B043] border border-[#52B043]/40 transition-all cursor-pointer" title="Exportar todo el directorio a Excel (.xlsx)">
+                            <i data-lucide="download" class="w-4 h-4 text-[#52B043]"></i>
+                            <span>Exportar .xlsx</span>
+                        </button>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-sky-950/70 hover:bg-sky-900/80 text-sky-300 border border-sky-500/40 transition-all cursor-pointer" title="Importar cuentas desde un archivo Excel (.xlsx o .xls)">
+                            <i data-lucide="upload" class="w-4 h-4 text-sky-400"></i>
+                            <span>Importar .xlsx</span>
+                            <input type="file" id="import-excel-file" accept=".xlsx, .xls" class="hidden" onchange="importarExcel(event)">
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- SECCIÓN 1: APARTADO / PANEL DE CREACIÓN DE CORREOS -->
+        <section id="seccion-crear" class="glass-card rounded-2xl overflow-hidden border border-slate-800/90">
+            <div class="px-5 py-4 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between cursor-pointer" onclick="toggleCreatorPanel()">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-[#006837]/30 border border-[#52B043]/40 flex items-center justify-center text-[#52B043]">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-white">Crear Nueva Cuenta de Correo Electrónico</h2>
+                        <p class="text-xs text-slate-400">Generación automática de sugerencias (Área o Inicial.Apellido) y contraseña con fecha actual</p>
+                    </div>
+                </div>
+                <button type="button" id="toggle-creator-btn" class="p-2 rounded-lg bg-slate-800/80 text-slate-300 hover:text-white transition">
+                    <i data-lucide="chevron-up" id="toggle-creator-icon" class="w-5 h-5 transition-transform duration-200"></i>
+                </button>
+            </div>
+
+            <div id="creator-body" class="p-5 sm:p-6 transition-all">
+                <form id="create-email-form" onsubmit="handleCreateSubmit(event)" class="space-y-5">
+                    
+                    <!-- Fila 1: Empresa/Proveedor, Dominio, Nombre(s), Apellido(s), Área -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <!-- Empresa o Proveedor -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Empresa / Proveedor *</label>
+                            <select id="inp-provider" onchange="onProviderChange()" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white focus:outline-none focus:border-[#52B043] focus:ring-1 focus:ring-[#52B043]">
+                                <optgroup label="Corporativos (Empresas)">
+                                    <option value="PIBE Logistic">PIBE Logistic</option>
+                                    <option value="CLOC Logistic">CLOC Logistic</option>
+                                    <option value="Tapa Logistic 360">Tapa Logistic 360</option>
+                                </optgroup>
+                                <optgroup label="Externos (Proveedores)">
+                                    <option value="Gmail">Gmail</option>
+                                    <option value="Outlook">Outlook</option>
+                                    <option value="Hotmail">Hotmail</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- Dominio editable -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Dominio Sugerido *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm font-mono">@</span>
+                                <input type="text" id="inp-domain" value="pibelogistic.com" oninput="updateEmailSuggestions()" required class="w-full pl-7 pr-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm font-mono text-emerald-300 focus:outline-none focus:border-[#52B043] focus:ring-1 focus:ring-[#52B043]" placeholder="dominio.com">
+                            </div>
+                        </div>
+
+                        <!-- Nombre(s) -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Nombre(s) *</label>
+                            <input type="text" id="inp-firstname" oninput="updateEmailSuggestions()" required placeholder="Ej. Juan Carlos" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#52B043] focus:ring-1 focus:ring-[#52B043]">
+                        </div>
+
+                        <!-- Apellido(s) -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Apellido(s) *</label>
+                            <input type="text" id="inp-lastname" oninput="updateEmailSuggestions()" required placeholder="Ej. Pérez López" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#52B043] focus:ring-1 focus:ring-[#52B043]">
+                        </div>
+
+                        <!-- Área / Departamento -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Área / Departamento *</label>
+                            <input type="text" id="inp-area" list="areas-list" oninput="updateEmailSuggestions()" required placeholder="Ej. Sistemas" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#52B043] focus:ring-1 focus:ring-[#52B043]">
+                            <datalist id="areas-list">
+                                <option value="Sistemas">
+                                <option value="Operaciones">
+                                <option value="Monitoreo">
+                                <option value="Mesa de Control">
+                                <option value="Contabilidad">
+                                <option value="Recursos Humanos">
+                                <option value="Dirección">
+                                <option value="Logística">
+                                <option value="Tráfico">
+                                <option value="Facturación">
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <!-- Fila 2: 2 Sugerencias Automáticas de Correo en Tiempo Real -->
+                    <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-[#52B043] flex items-center gap-1.5">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                                2 Sugerencias Automáticas de Correo (Tiempo Real)
+                            </span>
+                            <span class="text-[11px] text-slate-400">Haz clic en "Usar este" para aplicar</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <!-- Opción 1: Genérico del Área -->
+                            <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-emerald-500/40 transition">
+                                <div class="min-w-0">
+                                    <span class="block text-[11px] font-medium text-slate-400">Opción 1: Genérico del Área</span>
+                                    <span id="sug-area-text" class="block text-sm font-mono font-semibold text-white truncate">sistemas@pibelogistic.com</span>
+                                </div>
+                                <button type="button" onclick="applySuggestion('area')" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-[#52B043] border border-emerald-500/30 transition cursor-pointer">
+                                    Usar este
+                                </button>
+                            </div>
+
+                            <!-- Opción 2: Inicial + Punto + Apellido -->
+                            <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-emerald-500/40 transition">
+                                <div class="min-w-0">
+                                    <span class="block text-[11px] font-medium text-slate-400">Opción 2: Inicial Nombre + . + Apellido</span>
+                                    <span id="sug-personal-text" class="block text-sm font-mono font-semibold text-white truncate">j.perez@pibelogistic.com</span>
+                                </div>
+                                <button type="button" onclick="applySuggestion('personal')" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-[#52B043] border border-emerald-500/30 transition cursor-pointer">
+                                    Usar este
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fila 3: Correo Final, Contraseña Aleatoria con Fecha, Estatus y Notas -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+                        <!-- Correo Final Editable -->
+                        <div class="lg:col-span-4">
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Correo Electrónico Final *</label>
+                            <div class="relative">
+                                <i data-lucide="at-sign" class="w-4 h-4 text-[#52B043] absolute left-3.5 top-3"></i>
+                                <input type="email" id="inp-final-email" required placeholder="usuario@empresa.com" class="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-emerald-500/40 text-sm font-mono font-medium text-white focus:outline-none focus:border-[#52B043] focus:ring-1 focus:ring-[#52B043]">
+                            </div>
+                        </div>
+
+                        <!-- Contraseña Aleatoria con Fecha y Selector de Formato -->
+                        <div class="lg:col-span-4">
+                            <div class="flex flex-wrap items-center justify-between gap-1 text-xs font-semibold text-slate-300 mb-1.5">
+                                <span>Contraseña con Fecha *</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="date" id="inp-pwd-date" onchange="regenerateCreatePassword()" title="Fecha incluida en la contraseña" class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-[10px] font-mono text-emerald-300 focus:outline-none focus:border-[#52B043]">
+                                    <select id="inp-pwd-format" onchange="regenerateCreatePassword()" title="Formato de fecha" class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-[10px] font-mono text-slate-300 focus:outline-none focus:border-[#52B043]">
+                                        <option value="YYYYMMDD">YYYYMMDD</option>
+                                        <option value="DDMMYYYY">DDMMYYYY</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <input type="text" id="inp-password" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm font-mono font-semibold text-amber-300 focus:outline-none focus:border-[#52B043]">
+                                <button type="button" onclick="regenerateCreatePassword()" title="Regenerar contraseña manteniendo la fecha" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer shrink-0">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4 text-[#52B043]"></i>
+                                </button>
+                                <button type="button" onclick="copyText(document.getElementById('inp-password').value, 'Contraseña')" title="Copiar contraseña" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer shrink-0">
+                                    <i data-lucide="copy" class="w-4 h-4 text-sky-400"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Estatus -->
+                        <div class="lg:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Estatus</label>
+                            <select id="inp-status" class="w-full px-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white focus:outline-none focus:border-[#52B043]">
+                                <option value="Activo">🟢 Activo</option>
+                                <option value="Pendiente">🟡 Pendiente</option>
+                                <option value="Baja">🔴 Baja</option>
+                            </select>
+                        </div>
+
+                        <!-- Botón Guardar -->
+                        <div class="lg:col-span-2">
+                            <button type="submit" class="w-full py-2.5 px-4 rounded-xl brand-gradient brand-gradient-hover text-white font-semibold text-sm shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer">
+                                <i data-lucide="save" class="w-4 h-4"></i>
+                                <span>Guardar Correo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Observaciones Opcionales -->
+                    <div>
+                        <input type="text" id="inp-notes" placeholder="Notas u observaciones opcionales (ej. Dispositivo asignado, alias, permisos especiales...)" class="w-full px-3.5 py-2 rounded-xl bg-slate-900/50 border border-slate-800 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:border-slate-600">
+                    </div>
+
+                </form>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: NAVEGACIÓN DE 3 VISTAS + BUSCADOR RÁPIDO -->
+        <section class="space-y-4">
+            <!-- Barra de Pestañas Principales y Buscador -->
+            <div class="glass-card p-3 sm:p-4 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                
+                <!-- 3 Vistas Principales -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button" onclick="setMainView('general')" id="tab-general" class="view-tab px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer brand-gradient text-white shadow-md">
+                        <i data-lucide="layers" class="w-4 h-4"></i>
+                        <span>General (Todos)</span>
+                        <span id="badge-general" class="px-2 py-0.5 text-[11px] rounded-full bg-black/25 text-white">0</span>
+                    </button>
+
+                    <button type="button" onclick="setMainView('corporativos')" id="tab-corporativos" class="view-tab px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer bg-slate-800/70 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/60">
+                        <i data-lucide="building-2" class="w-4 h-4 text-[#52B043]"></i>
+                        <span>Correos Corporativos</span>
+                        <span id="badge-corporativos" class="px-2 py-0.5 text-[11px] rounded-full bg-slate-900 text-emerald-400">0</span>
+                    </button>
+
+                    <button type="button" onclick="setMainView('externos')" id="tab-externos" class="view-tab px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer bg-slate-800/70 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/60">
+                        <i data-lucide="globe" class="w-4 h-4 text-sky-400"></i>
+                        <span>Correos Externos</span>
+                        <span id="badge-externos" class="px-2 py-0.5 text-[11px] rounded-full bg-slate-900 text-sky-400">0</span>
+                    </button>
+                </div>
+
+                <!-- Buscador Instantáneo en Tiempo Real -->
+                <div class="relative w-full lg:w-96">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3"></i>
+                    <input type="text" id="search-input" oninput="renderEmails()" placeholder="Buscar por correo, usuario, área, empresa o fecha..." class="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#52B043] focus:ring-1 focus:ring-[#52B043]">
+                    <button type="button" id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-3 top-2.5 text-slate-400 hover:text-white">
+                        <i data-lucide="x-circle" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sub-filtros dinámicos (Solo visibles en Vista 2: Corporativos o Vista 3: Externos) -->
+            <div id="subfilters-bar" class="hidden glass-panel px-4 py-3 rounded-xl flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2" id="subfilters-buttons">
+                    <!-- Se llena dinámicamente con JS -->
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="filter-summary-text" class="text-xs text-slate-400">Mostrando registros filtrados</span>
+                    <button type="button" onclick="exportarExcel(true)" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition cursor-pointer" title="Descargar solo los registros visibles en esta vista">
+                        <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
+                        <span>Exportar vista actual (.xlsx)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla / Lista de Correos Electrónicos -->
+            <div class="glass-card rounded-2xl overflow-hidden border border-slate-800/90">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900/90 border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                                <th class="py-3.5 px-4">Empresa / Proveedor</th>
+                                <th class="py-3.5 px-4">Correo Electrónico</th>
+                                <th class="py-3.5 px-4">Contraseña</th>
+                                <th class="py-3.5 px-4">Usuario Asignado & Área</th>
+                                <th class="py-3.5 px-4">Creación / Estatus</th>
+                                <th class="py-3.5 px-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="emails-table-body" class="divide-y divide-slate-800/70 text-sm">
+                            <!-- Filas generadas dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Estado Vacío -->
+                <div id="empty-state" class="hidden py-14 px-4 text-center">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                        <i data-lucide="inbox" class="w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-base font-semibold text-white">No se encontraron correos electrónicos</h3>
+                    <p class="text-xs text-slate-400 max-w-md mx-auto mt-1">No hay registros que coincidan con la vista o búsqueda actual. Crea un nuevo correo en el formulario superior o limpia los filtros.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- USUARIOS CON ACCESO (solo Administrador) -->
+        <section id="seccion-usuarios" class="hidden glass-card rounded-2xl overflow-hidden border border-purple-500/30">
+            <div class="px-5 py-4 bg-slate-900/60 border-b border-slate-800">
+                <h2 class="text-base font-bold text-white flex items-center gap-2"><i data-lucide="shield-user" class="w-5 h-5 text-purple-400"></i> Usuarios con acceso al módulo de correos</h2>
+                <p class="text-xs text-slate-400">Solo personal del área de Sistemas. Define quién entra y qué puede hacer.</p>
+            </div>
+            <div class="p-5 sm:p-6 space-y-5">
+                <form id="form-usuarios-correos" onsubmit="guardarUsuarioCorreos(event)" class="space-y-4 text-xs">
+                    <input type="hidden" id="uc_id">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div><label class="block font-semibold text-slate-300 mb-1.5">Nombre completo *</label><input type="text" id="uc_nombre" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white focus:outline-none focus:border-purple-400"></div>
+                        <div><label class="block font-semibold text-slate-300 mb-1.5">Usuario *</label><input type="text" id="uc_username" required autocomplete="off" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white focus:outline-none focus:border-purple-400"></div>
+                        <div><label class="block font-semibold text-slate-300 mb-1.5">Contraseña *</label><input type="text" id="uc_password" autocomplete="off" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm font-mono text-white focus:outline-none focus:border-purple-400"><p id="uc_pass_hint" class="hidden text-[10px] text-slate-500 mt-1"></p></div>
+                        <div><label class="block font-semibold text-slate-300 mb-1.5">Rol *</label>
+                            <select id="uc_rol" onchange="alCambiarRolCorreos()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-sm text-white font-semibold cursor-pointer focus:outline-none focus:border-purple-400"><option value="USUARIO">Usuario de Sistemas</option><option value="ADMIN">Administrador</option></select>
+                            <p id="uc_rol_hint" class="text-[10px] text-slate-500 mt-1">Solo hará lo que marques.</p></div>
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2"><span class="font-bold text-purple-300">¿Qué podrá hacer?</span>
+                            <button type="button" onclick="marcarAccionesCorreos(true)" class="text-[11px] font-semibold text-sky-300 hover:underline cursor-pointer">Todo</button>
+                            <button type="button" onclick="marcarAccionesCorreos(false)" class="text-[11px] font-semibold text-slate-400 hover:underline cursor-pointer">Solo lectura</button></div>
+                        <div class="flex flex-wrap gap-x-5 gap-y-2 bg-slate-900/80 border border-purple-500/20 rounded-xl p-3.5">
+                            <label class="inline-flex items-center gap-2 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="cu_crear" class="w-4 h-4 accent-purple-500 rounded"> Crear cuentas</label><label class="inline-flex items-center gap-2 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="cu_editar" class="w-4 h-4 accent-purple-500 rounded"> Editar</label><label class="inline-flex items-center gap-2 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="cu_eliminar" class="w-4 h-4 accent-purple-500 rounded"> Eliminar</label><label class="inline-flex items-center gap-2 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="cu_exportar" class="w-4 h-4 accent-purple-500 rounded"> Exportar Excel</label><label class="inline-flex items-center gap-2 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="cu_importar" class="w-4 h-4 accent-purple-500 rounded"> Importar Excel</label><label class="inline-flex items-center gap-2 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="cu_verPass" class="w-4 h-4 accent-purple-500 rounded"> Ver contraseñas de correos</label>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2.5">
+                        <button type="button" onclick="cancelarUsuarioCorreos()" class="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer">Cancelar</button>
+                        <button type="submit" id="btn-guardar-uc" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white cursor-pointer">Guardar usuario</button>
+                    </div>
+                </form>
+                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900/90 text-[11px] uppercase tracking-wider text-slate-400"><tr><th class="p-3">Nombre</th><th class="p-3">Usuario</th><th class="p-3">Rol</th><th class="p-3">Contraseña</th><th class="p-3">Permisos</th><th class="p-3 text-right">Acciones</th></tr></thead>
+                        <tbody id="usuarios-correos-body" class="divide-y divide-slate-800/70"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL DE EDICIÓN COMPLETA -->
+    <div id="edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+        <div class="glass-card w-full max-w-2xl rounded-2xl border border-slate-700 overflow-hidden shadow-2xl animate-fade-in">
+            <div class="px-6 py-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white">Editar Cuenta de Correo</h3>
+                        <p class="text-xs text-slate-400">Modifica cualquier dato de la cuenta y guarda los cambios</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeEditModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="edit-email-form" onsubmit="handleEditSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-id">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Empresa / Proveedor *</label>
+                        <select id="edit-provider" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-[#52B043]">
+                            <optgroup label="Corporativos (Empresas)">
+                                <option value="PIBE Logistic">PIBE Logistic</option>
+                                <option value="CLOC Logistic">CLOC Logistic</option>
+                                <option value="Tapa Logistic 360">Tapa Logistic 360</option>
+                            </optgroup>
+                            <optgroup label="Externos (Proveedores)">
+                                <option value="Gmail">Gmail</option>
+                                <option value="Outlook">Outlook</option>
+                                <option value="Hotmail">Hotmail</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Estatus *</label>
+                        <select id="edit-status" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-[#52B043]">
+                            <option value="Activo">🟢 Activo</option>
+                            <option value="Pendiente">🟡 Pendiente</option>
+                            <option value="Baja">🔴 Baja</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Nombre(s) *</label>
+                        <input type="text" id="edit-firstname" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-[#52B043]">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Apellido(s) *</label>
+                        <input type="text" id="edit-lastname" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-[#52B043]">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Área / Departamento *</label>
+                        <input type="text" id="edit-area" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-[#52B043]">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Correo Electrónico *</label>
+                        <input type="email" id="edit-email" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-emerald-500/40 text-sm font-mono text-white focus:outline-none focus:border-[#52B043]">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Contraseña *</label>
+                        <div class="flex items-center gap-1.5">
+                            <input type="text" id="edit-password" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm font-mono text-amber-300 focus:outline-none focus:border-[#52B043]">
+                            <button type="button" onclick="regenerateEditPassword()" title="Generar nueva contraseña con fecha de hoy" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+                                <i data-lucide="refresh-cw" class="w-4 h-4 text-[#52B043]"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Notas / Observaciones</label>
+                    <textarea id="edit-notes" rows="2" class="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-200 focus:outline-none focus:border-[#52B043]" placeholder="Observaciones adicionales..."></textarea>
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-semibold brand-gradient brand-gradient-hover text-white shadow-lg flex items-center gap-2 transition cursor-pointer">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Guardar Cambios</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN (Sin usar confirm() nativo) -->
+    <div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+        <div class="glass-card w-full max-w-md rounded-2xl border border-rose-500/30 p-6 shadow-2xl">
+            <div class="flex items-center gap-3 text-rose-400 mb-3">
+                <div class="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-white">¿Eliminar cuenta de correo?</h3>
+                    <p class="text-xs text-slate-400">Esta acción no se puede deshacer.</p>
+                </div>
+            </div>
+            <p class="text-sm text-slate-300 mb-5 bg-slate-900/80 p-3 rounded-xl border border-slate-800 font-mono text-center" id="delete-target-email">
+                correo@ejemplo.com
+            </p>
+            <div class="flex items-center justify-end gap-3">
+                <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer">
+                    Cancelar
+                </button>
+                <button type="button" onclick="confirmDelete()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-lg transition cursor-pointer">
+                    Sí, eliminar registro
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT DE LA APLICACIÓN -->
+    <script>
+        // ==========================================
+        // CONFIGURACIÓN Y ESTADO GLOBAL
+        // ==========================================
+        const STORAGE_KEY = 'gestor_correos_logistic_v1';
+
+        const CORPORATE_PROVIDERS = ['PIBE Logistic', 'CLOC Logistic', 'Tapa Logistic 360'];
+        const EXTERNAL_PROVIDERS = ['Gmail', 'Outlook', 'Hotmail'];
+
+        const DEFAULT_DOMAINS = {
+            'PIBE Logistic': 'pibelogistic.com',
+            'CLOC Logistic': 'cloclogistic.com',
+            'Tapa Logistic 360': 'tapalogistic360.com',
+            'Gmail': 'gmail.com',
+            'Outlook': 'outlook.com',
+            'Hotmail': 'hotmail.com'
+        };
+
+        let emailsData = [];
+        let currentMainView = 'general'; // 'general' | 'corporativos' | 'externos'
+        let currentSubFilter = 'all';    // 'all' | nombre específico de empresa o proveedor
+        let visiblePasswords = new Set(); // IDs de registros cuya contraseña está visible
+        let deleteTargetId = null;
+
+        // ==========================================
+        // INICIALIZACIÓN Y DATOS DE EJEMPLO
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            initDatePickerToday();
+            loadFromLocalStorage();
+            regenerateCreatePassword();
+            updateEmailSuggestions();
+            renderEmails();
+            iniciarAuth();
+            lucide.createIcons();
+        });
+
+        function initDatePickerToday() {
+            const dateInput = document.getElementById('inp-pwd-date');
+            if (dateInput && !dateInput.value) {
+                const now = new Date();
+                const y = now.getFullYear();
+                const m = String(now.getMonth() + 1).padStart(2, '0');
+                const d = String(now.getDate()).padStart(2, '0');
+                dateInput.value = `${y}-${m}-${d}`;
+            }
+        }
+
+        function getSelectedPasswordDateToken() {
+            const dateInput = document.getElementById('inp-pwd-date');
+            const formatSelect = document.getElementById('inp-pwd-format');
+            const format = formatSelect ? formatSelect.value : 'YYYYMMDD';
+
+            let y, m, d;
+            if (dateInput && dateInput.value) {
+                [y, m, d] = dateInput.value.split('-');
+            } else {
+                const now = new Date();
+                y = String(now.getFullYear());
+                m = String(now.getMonth() + 1).padStart(2, '0');
+                d = String(now.getDate()).padStart(2, '0');
+            }
+
+            return format === 'DDMMYYYY' ? `${d}${m}${y}` : `${y}${m}${d}`;
+        }
+
+        function getFormattedTodayYYYYMMDD() {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            return `${y}${m}${d}`;
+        }
+
+        function getFormattedTodayISO() {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function getFormattedTodayDisplay() {
+            const now = new Date();
+            const d = String(now.getDate()).padStart(2, '0');
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const y = now.getFullYear();
+            return `${d}/${m}/${y}`;
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    emailsData = JSON.parse(saved);
+                    return;
+                } catch (e) {
+                    console.error('Error al leer localStorage:', e);
+                }
+            }
+
+            // Datos iniciales de demostración
+            const todayStr = getFormattedTodayDisplay();
+            const todayCode = getFormattedTodayYYYYMMDD();
+            emailsData = [
+                {
+                    id: 'seed-1',
+                    provider: 'PIBE Logistic',
+                    category: 'corporativo',
+                    firstName: 'Carlos Alberto',
+                    lastName: 'Mendoza Ruiz',
+                    area: 'Sistemas',
+                    email: 'c.mendoza@pibelogistic.com',
+                    password: `Pibe#${todayCode}*k9L`,
+                    status: 'Activo',
+                    createdAt: todayStr,
+                    notes: 'Administrador principal de infraestructura TI'
+                },
+                {
+                    id: 'seed-2',
+                    provider: 'PIBE Logistic',
+                    category: 'corporativo',
+                    firstName: 'Departamento',
+                    lastName: 'Monitoreo',
+                    area: 'Monitoreo',
+                    email: 'monitoreo@pibelogistic.com',
+                    password: `${todayCode}$mN4!pQ`,
+                    status: 'Activo',
+                    createdAt: todayStr,
+                    notes: 'Cuenta grupal turno 24/7 GPS'
+                },
+                {
+                    id: 'seed-3',
+                    provider: 'CLOC Logistic',
+                    category: 'corporativo',
+                    firstName: 'Fernanda',
+                    lastName: 'Salazar Gómez',
+                    area: 'Mesa de Control',
+                    email: 'f.salazar@cloclogistic.com',
+                    password: `Cloc@${todayCode}#x7R`,
+                    status: 'Activo',
+                    createdAt: todayStr,
+                    notes: 'Coordinación de embarques nacionales'
+                },
+                {
+                    id: 'seed-4',
+                    provider: 'Tapa Logistic 360',
+                    category: 'corporativo',
+                    firstName: 'Roberto',
+                    lastName: 'Villalobos',
+                    area: 'Operaciones',
+                    email: 'r.villalobos@tapalogistic360.com',
+                    password: `Tapa!${todayCode}*z2W`,
+                    status: 'Activo',
+                    createdAt: todayStr,
+                    notes: 'Gerencia de Operaciones'
+                },
+                {
+                    id: 'seed-5',
+                    provider: 'Gmail',
+                    category: 'externo',
+                    firstName: 'Laura',
+                    lastName: 'Jiménez',
+                    area: 'Contabilidad',
+                    email: 'contabilidad.pibelogistic@gmail.com',
+                    password: `${todayCode}&vB8#mT`,
+                    status: 'Activo',
+                    createdAt: todayStr,
+                    notes: 'Recepción de facturas y respaldo fiscal'
+                },
+                {
+                    id: 'seed-6',
+                    provider: 'Outlook',
+                    category: 'externo',
+                    firstName: 'Héctor',
+                    lastName: 'Domínguez',
+                    area: 'Tráfico',
+                    email: 'h.dominguez@outlook.com',
+                    password: `Out#${todayCode}$q5P`,
+                    status: 'Pendiente',
+                    createdAt: todayStr,
+                    notes: 'Cuenta externa para enlace con proveedores'
+                },
+                {
+                    id: 'seed-7',
+                    provider: 'Hotmail',
+                    category: 'externo',
+                    firstName: 'Sofía',
+                    lastName: 'Castillo',
+                    area: 'Recursos Humanos',
+                    email: 'recursoshumanos.cloc@hotmail.com',
+                    password: `Hot*${todayCode}!n3K`,
+                    status: 'Activo',
+                    createdAt: todayStr,
+                    notes: 'Reclutamiento de operadores'
+                }
+            ];
+            saveToLocalStorage();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(emailsData));
+        }
+
+        // ==========================================
+        // UTILIDADES DE TEXTO Y GENERACIÓN
+        // ==========================================
+        function normalizeText(str) {
+            if (!str) return '';
+            return str
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '');     // Solo letras y números
+        }
+
+        function onProviderChange() {
+            const provider = document.getElementById('inp-provider').value;
+            const domainInput = document.getElementById('inp-domain');
+            domainInput.value = DEFAULT_DOMAINS[provider] || 'empresa.com';
+            updateEmailSuggestions();
+            regenerateCreatePassword();
+        }
+
+        function updateEmailSuggestions() {
+            const provider = document.getElementById('inp-provider').value;
+            const domain = (document.getElementById('inp-domain').value || 'empresa.com').trim().replace(/^@/, '').toLowerCase();
+            const firstNameRaw = document.getElementById('inp-firstname').value.trim();
+            const lastNameRaw = document.getElementById('inp-lastname').value.trim();
+            const areaRaw = document.getElementById('inp-area').value.trim();
+
+            const isExternal = EXTERNAL_PROVIDERS.includes(provider);
+
+            // 1. Sugerencia Genérica del Área
+            const cleanArea = normalizeText(areaRaw) || 'sistemas';
+            let sugArea = `${cleanArea}@${domain}`;
+            if (isExternal) {
+                // Para proveedores externos, sugerimos área.pibelogistic@gmail.com o área@gmail.com
+                sugArea = `${cleanArea}.pibelogistic@${domain}`;
+            }
+
+            // 2. Sugerencia Inicial del primer nombre + punto + primer apellido
+            const firstWordName = firstNameRaw.split(/\s+/)[0] || '';
+            const firstWordLast = lastNameRaw.split(/\s+/)[0] || '';
+
+            const initial = normalizeText(firstWordName).charAt(0) || 'j';
+            const cleanLast = normalizeText(firstWordLast) || 'perez';
+            const sugPersonal = `${initial}.${cleanLast}@${domain}`;
+
+            document.getElementById('sug-area-text').textContent = sugArea;
+            document.getElementById('sug-personal-text').textContent = sugPersonal;
+        }
+
+        function applySuggestion(type) {
+            const chosen = type === 'area'
+                ? document.getElementById('sug-area-text').textContent
+                : document.getElementById('sug-personal-text').textContent;
+
+            const finalInput = document.getElementById('inp-final-email');
+            finalInput.value = chosen;
+            finalInput.focus();
+            showToast(`Correo aplicado: ${chosen}`, 'success');
+        }
+
+        function generatePasswordWithDate(providerName = '') {
+            const dateStr = getSelectedPasswordDateToken();
+            const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+            const lower = 'abcdefghijkmnopqrstuvwxyz';
+            const nums = '23456789';
+            const symbols = '#$!*@%&';
+
+            const randChar = (set) => set.charAt(Math.floor(Math.random() * set.length));
+            const randomSuffix = `${randChar(symbols)}${randChar(lower)}${randChar(nums)}${randChar(upper)}${randChar(symbols)}${randChar(lower)}`;
+
+            // Prefijo corto opcional basado en la empresa/proveedor
+            const cleanPrefix = normalizeText(providerName).slice(0, 4);
+            const formattedPrefix = cleanPrefix
+                ? cleanPrefix.charAt(0).toUpperCase() + cleanPrefix.slice(1)
+                : '';
+
+            const patterns = [
+                `${formattedPrefix}${randChar(symbols)}${dateStr}${randomSuffix}`,
+                `${dateStr}${randChar(symbols)}${randChar(upper)}${randChar(lower)}${randChar(nums)}${randChar(symbols)}${randChar(upper)}`,
+                `${formattedPrefix || 'Mail'}#${dateStr}*${randChar(lower)}${randChar(nums)}${randChar(upper)}`
+            ];
+
+            return patterns[Math.floor(Math.random() * patterns.length)];
+        }
+
+        function regenerateCreatePassword() {
+            const provider = document.getElementById('inp-provider').value;
+            const pwd = generatePasswordWithDate(provider);
+            document.getElementById('inp-password').value = pwd;
+        }
+
+        function regenerateEditPassword() {
+            const provider = document.getElementById('edit-provider').value;
+            document.getElementById('edit-password').value = generatePasswordWithDate(provider);
+        }
+
+        // ==========================================
+        // EXPORTAR E IMPORTAR EXCEL (.XLSX) CON SHEETJS
+        // ==========================================
+        function getFilteredDataset() {
+            const query = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+            return emailsData.filter(item => {
+                const isCorp = CORPORATE_PROVIDERS.includes(item.provider);
+                if (currentMainView === 'corporativos' && !isCorp) return false;
+                if (currentMainView === 'externos' && isCorp) return false;
+                if (currentSubFilter !== 'all' && item.provider !== currentSubFilter) return false;
+
+                if (query) {
+                    const searchable = `${item.email} ${item.firstName} ${item.lastName} ${item.area} ${item.provider} ${item.createdAt} ${item.status} ${item.notes || ''}`.toLowerCase();
+                    return searchable.includes(query);
+                }
+                return true;
+            });
+        }
+
+        function detectAccountType(item) {
+            const emailUser = (item.email || '').split('@')[0] || '';
+            const cleanArea = normalizeText(item.area);
+            if (cleanArea && emailUser.startsWith(cleanArea)) {
+                return 'Genérico de Área';
+            }
+            if (/^[a-z]\.[a-z0-9]+$/i.test(emailUser)) {
+                return 'Personal (Inicial.Apellido)';
+            }
+            return 'Personalizado';
+        }
+
+        function exportarExcel(onlyFiltered = false) {
+            if (!puede('exportar')) { showToast(MSG_SIN_PERMISO, 'error'); return; }
+            if (typeof XLSX === 'undefined') {
+                showToast('La librería SheetJS aún está cargando. Intenta de nuevo en un segundo.', 'error');
+                return;
+            }
+
+            const sourceData = onlyFiltered ? getFilteredDataset() : emailsData;
+            if (sourceData.length === 0) {
+                showToast('No hay registros disponibles para exportar a Excel.', 'error');
+                return;
+            }
+
+            const rows = sourceData.map(item => {
+                const isCorp = CORPORATE_PROVIDERS.includes(item.provider);
+                const titular = `${item.firstName || ''} ${item.lastName || ''}`.trim();
+                return {
+                    'ID': item.id,
+                    'Correo Electrónico': item.email,
+                    'Contraseña': item.password,
+                    'Titular / Usuario': titular,
+                    'Área / Departamento': item.area,
+                    'Empresa / Proveedor': item.provider,
+                    'Categoría': isCorp ? 'Corporativo' : 'Externo',
+                    'Tipo de Cuenta': detectAccountType(item),
+                    'Estatus': item.status || 'Activo',
+                    'Fecha de Creación': item.createdAt,
+                    'Notas': item.notes || ''
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            // Ajustar ancho de columnas automáticamente
+            worksheet['!cols'] = [
+                { wch: 18 }, // ID
+                { wch: 34 }, // Correo Electrónico
+                { wch: 22 }, // Contraseña
+                { wch: 26 }, // Titular / Usuario
+                { wch: 20 }, // Área / Departamento
+                { wch: 20 }, // Empresa / Proveedor
+                { wch: 14 }, // Categoría
+                { wch: 24 }, // Tipo de Cuenta
+                { wch: 12 }, // Estatus
+                { wch: 16 }, // Fecha de Creación
+                { wch: 36 }  // Notas
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            const sheetName = onlyFiltered ? 'Correos_Filtrados' : 'Directorio_Correos';
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+            const suffix = onlyFiltered
+                ? `_${normalizeText(currentSubFilter !== 'all' ? currentSubFilter : currentMainView)}`
+                : '';
+            const fileName = `Directorio_Correos${suffix}_${getFormattedTodayISO()}.xlsx`;
+
+            XLSX.writeFile(workbook, fileName);
+            showToast(`Archivo Excel "${fileName}" descargado (${sourceData.length} registros).`, 'success');
+        }
+
+        function descargarPlantillaExcel() {
+            if (!puede('importar')) { showToast(MSG_SIN_PERMISO, 'error'); return; }
+            if (typeof XLSX === 'undefined') {
+                showToast('La librería SheetJS aún está cargando.', 'error');
+                return;
+            }
+
+            const sampleRows = [
+                {
+                    'ID': '',
+                    'Correo Electrónico': 'a.landeros@pibelogistic.com',
+                    'Contraseña': `Pibe#${getFormattedTodayYYYYMMDD()}*k9L`,
+                    'Titular / Usuario': 'Alejandro Landeros',
+                    'Área / Departamento': 'Sistemas',
+                    'Empresa / Proveedor': 'PIBE Logistic',
+                    'Categoría': 'Corporativo',
+                    'Tipo de Cuenta': 'Personal (Inicial.Apellido)',
+                    'Estatus': 'Activo',
+                    'Fecha de Creación': getFormattedTodayDisplay(),
+                    'Notas': 'Ejemplo de registro corporativo'
+                },
+                {
+                    'ID': '',
+                    'Correo Electrónico': 'operaciones.cloc@gmail.com',
+                    'Contraseña': `Cloc@${getFormattedTodayYYYYMMDD()}#m4P`,
+                    'Titular / Usuario': 'Departamento Operaciones',
+                    'Área / Departamento': 'Operaciones',
+                    'Empresa / Proveedor': 'Gmail',
+                    'Categoría': 'Externo',
+                    'Tipo de Cuenta': 'Genérico de Área',
+                    'Estatus': 'Activo',
+                    'Fecha de Creación': getFormattedTodayDisplay(),
+                    'Notas': 'Ejemplo de cuenta externa'
+                }
+            ];
+
+            const worksheet = XLSX.utils.json_to_sheet(sampleRows);
+            worksheet['!cols'] = [
+                { wch: 14 }, { wch: 32 }, { wch: 22 }, { wch: 25 }, { wch: 20 },
+                { wch: 20 }, { wch: 14 }, { wch: 24 }, { wch: 12 }, { wch: 16 }, { wch: 32 }
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Plantilla_Correos');
+            XLSX.writeFile(workbook, `Plantilla_Importacion_Correos_${getFormattedTodayISO()}.xlsx`);
+            showToast('Plantilla Excel (.xlsx) descargada correctamente.', 'info');
+        }
+
+        function normalizeHeaderKey(key) {
+            return String(key || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '');
+        }
+
+        function mapExcelRowToRecord(rawRow) {
+            // Crear diccionario normalizado de columnas
+            const norm = {};
+            Object.keys(rawRow).forEach(k => {
+                norm[normalizeHeaderKey(k)] = rawRow[k];
+            });
+
+            const emailVal = String(
+                norm['correoelectronico'] || norm['correo'] || norm['email'] || norm['mail'] || ''
+            ).trim().toLowerCase();
+
+            if (!emailVal || !emailVal.includes('@')) return null;
+
+            // Detectar empresa/proveedor desde columna o inferir del dominio del correo
+            let providerRaw = String(
+                norm['empresaproveedor'] || norm['empresa'] || norm['proveedor'] || norm['compania'] || ''
+            ).trim();
+
+            const domainPart = emailVal.split('@')[1] || '';
+            if (!providerRaw) {
+                if (domainPart.includes('pibe')) providerRaw = 'PIBE Logistic';
+                else if (domainPart.includes('cloc')) providerRaw = 'CLOC Logistic';
+                else if (domainPart.includes('tapa')) providerRaw = 'Tapa Logistic 360';
+                else if (domainPart.includes('gmail')) providerRaw = 'Gmail';
+                else if (domainPart.includes('outlook')) providerRaw = 'Outlook';
+                else if (domainPart.includes('hotmail')) providerRaw = 'Hotmail';
+                else providerRaw = 'PIBE Logistic';
+            } else {
+                // Normalizar nombres conocidos
+                const pLow = providerRaw.toLowerCase();
+                if (pLow.includes('pibe')) providerRaw = 'PIBE Logistic';
+                else if (pLow.includes('cloc')) providerRaw = 'CLOC Logistic';
+                else if (pLow.includes('tapa')) providerRaw = 'Tapa Logistic 360';
+                else if (pLow.includes('gmail')) providerRaw = 'Gmail';
+                else if (pLow.includes('outlook')) providerRaw = 'Outlook';
+                else if (pLow.includes('hotmail')) providerRaw = 'Hotmail';
+            }
+
+            const category = CORPORATE_PROVIDERS.includes(providerRaw) ? 'corporativo' : 'externo';
+
+            // Titular / Nombre y Apellido
+            const titularFull = String(
+                norm['titularusuario'] || norm['titular'] || norm['usuario'] || norm['nombrecompleto'] || ''
+            ).trim();
+            let firstName = String(norm['nombre'] || norm['nombres'] || '').trim();
+            let lastName = String(norm['apellido'] || norm['apellidos'] || '').trim();
+
+            if (!firstName && titularFull) {
+                const parts = titularFull.split(/\s+/);
+                firstName = parts[0] || 'Usuario';
+                lastName = parts.slice(1).join(' ');
+            }
+            if (!firstName) firstName = 'Usuario';
+
+            const area = String(
+                norm['areadepartamento'] || norm['area'] || norm['departamento'] || 'General'
+            ).trim();
+
+            const password = String(
+                norm['contrasena'] || norm['password'] || norm['clave'] || generatePasswordWithDate(providerRaw)
+            ).trim();
+
+            const statusRaw = String(norm['estatus'] || norm['estado'] || 'Activo').trim();
+            const status = ['Activo', 'Pendiente', 'Baja'].find(s => s.toLowerCase() === statusRaw.toLowerCase()) || 'Activo';
+
+            const createdAt = String(
+                norm['fechadecreacion'] || norm['fechacreacion'] || norm['fecha'] || getFormattedTodayDisplay()
+            ).trim();
+
+            const notes = String(
+                norm['notas'] || norm['observaciones'] || norm['comentarios'] || ''
+            ).trim();
+
+            const existingId = String(norm['id'] || '').trim();
+
+            return {
+                id: existingId || ('xlsx-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+                provider: providerRaw,
+                category,
+                firstName,
+                lastName,
+                area,
+                email: emailVal,
+                password,
+                status,
+                createdAt,
+                notes
+            };
+        }
+
+        function importarExcel(event) {
+            if (!puede('importar')) { event.target.value = ''; showToast(MSG_SIN_PERMISO, 'error'); return; }
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (typeof XLSX === 'undefined') {
+                showToast('La librería SheetJS aún no está lista.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                    if (!rawRows || rawRows.length === 0) {
+                        showToast('La hoja de Excel está vacía o no tiene filas con datos.', 'error');
+                        return;
+                    }
+
+                    let addedCount = 0;
+                    let updatedCount = 0;
+
+                    rawRows.forEach(rawRow => {
+                        const mapped = mapExcelRowToRecord(rawRow);
+                        if (!mapped) return;
+
+                        // Buscar si ya existe por correo electrónico para actualizar sin duplicar
+                        const existingIndex = emailsData.findIndex(
+                            item => item.email.toLowerCase() === mapped.email.toLowerCase()
+                        );
+
+                        if (existingIndex !== -1) {
+                            emailsData[existingIndex] = {
+                                ...emailsData[existingIndex],
+                                ...mapped,
+                                id: emailsData[existingIndex].id // Conservar ID original
+                            };
+                            updatedCount++;
+                        } else {
+                            emailsData.unshift(mapped);
+                            addedCount++;
+                        }
+                    });
+
+                    if (addedCount === 0 && updatedCount === 0) {
+                        showToast('No se encontraron correos válidos en el Excel. Verifica la columna "Correo Electrónico".', 'error');
+                        return;
+                    }
+
+                    saveToLocalStorage();
+                    renderSubFilters();
+                    renderEmails();
+                    showToast(`Excel importado: ${addedCount} nuevos, ${updatedCount} actualizados.`, 'success');
+                } catch (err) {
+                    console.error('Error importando Excel:', err);
+                    showToast('Error al procesar el archivo Excel (.xlsx/.xls).', 'error');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // ==========================================
+        // PORTAPAPELES Y NOTIFICACIONES TOAST
+        // ==========================================
+        function copyText(text, label = 'Texto') {
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            tempInput.style.position = 'fixed';
+            tempInput.style.opacity = '0';
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try {
+                document.execCommand('copy');
+                showToast(`¡${label} copiado al portapapeles!`, 'success');
+            } catch (err) {
+                showToast('No se pudo copiar automáticamente.', 'error');
+            }
+            document.body.removeChild(tempInput);
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-slate-900 border-[#52B043] text-white',
+                error: 'bg-slate-900 border-rose-500 text-rose-200',
+                info: 'bg-slate-900 border-sky-400 text-sky-200'
+            };
+
+            const icons = {
+                success: 'check-circle-2',
+                error: 'alert-circle',
+                info: 'info'
+            };
+
+            const iconColors = {
+                success: 'text-[#52B043]',
+                error: 'text-rose-400',
+                info: 'text-sky-400'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-2xl text-xs font-semibold transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.success}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || icons.success}" class="w-4 h-4 shrink-0 ${iconColors[type] || iconColors.success}"></i>
+                <span>${escapeHTML(message)}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2800);
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeAttr(str) {
+            if (!str) return '';
+            return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+
+        // ==========================================
+        // VISTAS, FILTROS Y LISTA DE CORREOS
+        // ==========================================
+        function setMainView(view) {
+            currentMainView = view;
+            currentSubFilter = 'all';
+            ['general', 'corporativos', 'externos'].forEach(v => {
+                const b = document.getElementById('tab-' + v);
+                if (b) b.className = 'view-tab px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ' +
+                    (v === view ? 'brand-gradient text-white shadow-md' : 'bg-slate-800/70 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/60');
+            });
+            renderSubFilters();
+            renderEmails();
+        }
+
+        function setSubFilter(name) {
+            currentSubFilter = name;
+            renderSubFilters();
+            renderEmails();
+        }
+
+        function renderSubFilters() {
+            const bar = document.getElementById('subfilters-bar');
+            const box = document.getElementById('subfilters-buttons');
+            if (currentMainView === 'general') { bar.classList.add('hidden'); return; }
+            bar.classList.remove('hidden');
+            const providers = currentMainView === 'corporativos' ? CORPORATE_PROVIDERS : EXTERNAL_PROVIDERS;
+            const total = emailsData.filter(e => providers.includes(e.provider)).length;
+            const btn = (value, label, count) => {
+                const active = currentSubFilter === value;
+                return `<button type="button" onclick="setSubFilter('${escapeAttr(value)}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${active ? 'brand-gradient text-white shadow' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 border border-slate-700/60'}">${escapeHTML(label)} <span class="opacity-70">(${count})</span></button>`;
+            };
+            box.innerHTML = btn('all', 'Todos', total) + providers.map(p => btn(p, p, emailsData.filter(e => e.provider === p).length)).join('');
+        }
+
+        function renderEmails() {
+            const tbody = document.getElementById('emails-table-body');
+            const empty = document.getElementById('empty-state');
+            if (!usuarioActual) { tbody.innerHTML = ''; empty.classList.add('hidden'); return; }
+
+            const corp = emailsData.filter(e => CORPORATE_PROVIDERS.includes(e.provider)).length;
+            const ext = emailsData.length - corp;
+            document.getElementById('stat-total').textContent = emailsData.length;
+            document.getElementById('stat-corp').textContent = corp;
+            document.getElementById('stat-ext').textContent = ext;
+            document.getElementById('badge-general').textContent = emailsData.length;
+            document.getElementById('badge-corporativos').textContent = corp;
+            document.getElementById('badge-externos').textContent = ext;
+
+            const search = document.getElementById('search-input').value;
+            document.getElementById('clear-search-btn').classList.toggle('hidden', !search);
+
+            const list = getFilteredDataset();
+            document.getElementById('filter-summary-text').textContent = `Mostrando ${list.length} de ${emailsData.length} registros`;
+
+            const statusStyle = {
+                'Activo': 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                'Pendiente': 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+                'Baja': 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+            };
+            const verPass = puede('verPass'), editar = puede('editar'), eliminar = puede('eliminar');
+            const iconBtn = 'p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 transition cursor-pointer';
+
+            tbody.innerHTML = list.map(item => {
+                const isCorp = CORPORATE_PROVIDERS.includes(item.provider);
+                const id = escapeAttr(item.id);
+                const visible = verPass && visiblePasswords.has(item.id);
+                const passCell = visible
+                    ? `<span class="font-mono text-amber-300 text-xs break-all">${escapeHTML(item.password)}</span>`
+                    : `<span class="font-mono text-slate-500 text-xs">••••••••••</span>`;
+                const passBtns = verPass ? `
+                    <button type="button" onclick="togglePasswordVisibility('${id}')" title="Mostrar / ocultar" class="${iconBtn} text-slate-300"><i data-lucide="${visible ? 'eye-off' : 'eye'}" class="w-3.5 h-3.5"></i></button>
+                    <button type="button" onclick="copyText('${escapeAttr(item.password)}', 'Contraseña')" title="Copiar contraseña" class="${iconBtn} text-slate-300"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>` : '';
+                const actions = (editar ? `<button type="button" onclick="openEditModal('${id}')" title="Editar" class="${iconBtn} text-sky-300"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>` : '')
+                    + (eliminar ? `<button type="button" onclick="openDeleteModal('${id}')" title="Eliminar" class="${iconBtn} text-rose-300"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : '')
+                    || '<span class="text-[11px] text-slate-600">Solo lectura</span>';
+                return `<tr class="hover:bg-slate-800/30 transition">
+                    <td class="py-3 px-4"><span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${isCorp ? 'bg-emerald-500/15 text-[#52B043] border-emerald-500/30' : 'bg-sky-500/15 text-sky-300 border-sky-500/30'}">${escapeHTML(item.provider)}</span></td>
+                    <td class="py-3 px-4"><div class="flex items-center gap-2"><span class="font-mono text-xs text-white break-all">${escapeHTML(item.email)}</span><button type="button" onclick="copyText('${escapeAttr(item.email)}', 'Correo')" title="Copiar correo" class="${iconBtn} text-slate-400"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button></div><span class="text-[10px] text-slate-500">${escapeHTML(detectAccountType(item))}</span></td>
+                    <td class="py-3 px-4"><div class="flex items-center gap-2">${passCell}${passBtns}</div></td>
+                    <td class="py-3 px-4"><span class="block text-xs font-semibold text-slate-200">${escapeHTML(((item.firstName || '') + ' ' + (item.lastName || '')).trim())}</span><span class="block text-[11px] text-slate-400">${escapeHTML(item.area)}</span>${item.notes ? `<span class="block text-[10px] text-slate-500 truncate max-w-[220px]" title="${escapeHTML(item.notes)}">${escapeHTML(item.notes)}</span>` : ''}</td>
+                    <td class="py-3 px-4"><span class="block text-xs text-slate-300">${escapeHTML(item.createdAt)}</span><span class="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusStyle[item.status] || statusStyle['Activo']}">${escapeHTML(item.status)}</span></td>
+                    <td class="py-3 px-4"><div class="flex items-center justify-end gap-1.5">${actions}</div></td>
+                </tr>`;
+            }).join('');
+
+            empty.classList.toggle('hidden', list.length > 0);
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            renderEmails();
+        }
+
+        function toggleCreatorPanel() {
+            const body = document.getElementById('creator-body');
+            body.classList.toggle('hidden');
+            document.getElementById('toggle-creator-icon').classList.toggle('rotate-180', body.classList.contains('hidden'));
+        }
+
+        function togglePasswordVisibility(id) {
+            if (!puede('verPass')) return showToast(MSG_SIN_PERMISO, 'error');
+            if (visiblePasswords.has(id)) visiblePasswords.delete(id); else visiblePasswords.add(id);
+            renderEmails();
+        }
+
+        // ==========================================
+        // CREAR / EDITAR / ELIMINAR CUENTAS
+        // ==========================================
+        function handleCreateSubmit(e) {
+            e.preventDefault();
+            if (!puede('crear')) return showToast(MSG_SIN_PERMISO, 'error');
+            const email = document.getElementById('inp-final-email').value.trim().toLowerCase();
+            if (emailsData.some(x => (x.email || '').toLowerCase() === email)) {
+                return showToast('Ese correo electrónico ya está registrado.', 'error');
+            }
+            const provider = document.getElementById('inp-provider').value;
+            emailsData.unshift({
+                id: 'em-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+                provider: provider,
+                category: CORPORATE_PROVIDERS.includes(provider) ? 'corporativo' : 'externo',
+                firstName: document.getElementById('inp-firstname').value.trim(),
+                lastName: document.getElementById('inp-lastname').value.trim(),
+                area: document.getElementById('inp-area').value.trim(),
+                email: email,
+                password: document.getElementById('inp-password').value.trim(),
+                status: document.getElementById('inp-status').value,
+                createdAt: getFormattedTodayDisplay(),
+                notes: document.getElementById('inp-notes').value.trim()
+            });
+            saveToLocalStorage();
+            document.getElementById('create-email-form').reset();
+            initDatePickerToday();
+            onProviderChange();
+            renderSubFilters();
+            renderEmails();
+            showToast('Cuenta de correo creada correctamente.', 'success');
+        }
+
+        function openEditModal(id) {
+            if (!puede('editar')) return showToast(MSG_SIN_PERMISO, 'error');
+            const item = emailsData.find(x => x.id === id);
+            if (!item) return;
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('edit-provider').value = item.provider;
+            document.getElementById('edit-status').value = item.status || 'Activo';
+            document.getElementById('edit-firstname').value = item.firstName || '';
+            document.getElementById('edit-lastname').value = item.lastName || '';
+            document.getElementById('edit-area').value = item.area || '';
+            document.getElementById('edit-email').value = item.email || '';
+            document.getElementById('edit-password').value = puede('verPass') ? (item.password || '') : '';
+            document.getElementById('edit-password').required = puede('verPass');
+            document.getElementById('edit-password').placeholder = puede('verPass') ? '' : 'Vacío = conservar la actual';
+            document.getElementById('edit-notes').value = item.notes || '';
+            const modal = document.getElementById('edit-modal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('edit-modal');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        function handleEditSubmit(e) {
+            e.preventDefault();
+            if (!puede('editar')) return showToast(MSG_SIN_PERMISO, 'error');
+            const id = document.getElementById('edit-id').value;
+            const item = emailsData.find(x => x.id === id);
+            if (!item) return;
+            const email = document.getElementById('edit-email').value.trim().toLowerCase();
+            if (emailsData.some(x => x.id !== id && (x.email || '').toLowerCase() === email)) {
+                return showToast('Ese correo electrónico ya está registrado en otro registro.', 'error');
+            }
+            const provider = document.getElementById('edit-provider').value;
+            const nuevaPass = document.getElementById('edit-password').value.trim();
+            item.provider = provider;
+            item.category = CORPORATE_PROVIDERS.includes(provider) ? 'corporativo' : 'externo';
+            item.status = document.getElementById('edit-status').value;
+            item.firstName = document.getElementById('edit-firstname').value.trim();
+            item.lastName = document.getElementById('edit-lastname').value.trim();
+            item.area = document.getElementById('edit-area').value.trim();
+            item.email = email;
+            if (nuevaPass) item.password = nuevaPass;
+            item.notes = document.getElementById('edit-notes').value.trim();
+            saveToLocalStorage();
+            closeEditModal();
+            renderSubFilters();
+            renderEmails();
+            showToast('Cuenta actualizada correctamente.', 'success');
+        }
+
+        function openDeleteModal(id) {
+            if (!puede('eliminar')) return showToast(MSG_SIN_PERMISO, 'error');
+            const item = emailsData.find(x => x.id === id);
+            if (!item) return;
+            deleteTargetId = id;
+            document.getElementById('delete-target-email').textContent = item.email;
+            const modal = document.getElementById('delete-modal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        function closeDeleteModal() {
+            deleteTargetId = null;
+            const modal = document.getElementById('delete-modal');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        function confirmDelete() {
+            if (!puede('eliminar')) return showToast(MSG_SIN_PERMISO, 'error');
+            if (!deleteTargetId) return;
+            emailsData = emailsData.filter(x => x.id !== deleteTargetId);
+            visiblePasswords.delete(deleteTargetId);
+            saveToLocalStorage();
+            closeDeleteModal();
+            renderSubFilters();
+            renderEmails();
+            showToast('Cuenta eliminada.', 'success');
+        }
+
+        // ==========================================
+        // ACCESO Y USUARIOS (solo área de Sistemas)
+        // ==========================================
+        const USERS_KEY = 'gestor_correos_usuarios_v1';
+        const SESSION_KEY = 'PIBE_CORREOS_SESION';
+        const MSG_SIN_PERMISO = 'No tienes permiso para realizar esta acción.';
+        const ACCIONES_CORREO = { crear: 'crear', editar: 'editar', eliminar: 'eliminar', exportar: 'exportar', importar: 'importar', verPass: 'ver contraseñas' };
+        let usersDB = [];
+        let usuarioActual = null;
+
+        // La contraseña del ADMIN se guarda cifrada (SHA-256). Las de usuarios normales quedan legibles para que el ADMIN las consulte.
+        function sha256Hex(str) {
+            const K = [], H = [];
+            for (let p = 2, n = 0; n < 64; p++) {
+                let primo = true;
+                for (let i = 2; i * i <= p; i++) if (p % i === 0) { primo = false; break; }
+                if (primo) { if (n < 8) H[n] = (Math.pow(p, 0.5) % 1 * 4294967296) | 0; K[n++] = (Math.pow(p, 1 / 3) % 1 * 4294967296) | 0; }
+            }
+            const rr = (v, a) => (v >>> a) | (v << (32 - a));
+            const s = unescape(encodeURIComponent(str)), l = s.length, w = [];
+            for (let i = 0; i < l; i++) w[i >> 2] = (w[i >> 2] | 0) | (s.charCodeAt(i) << (24 - (i % 4) * 8));
+            w[l >> 2] = (w[l >> 2] | 0) | (0x80 << (24 - (l % 4) * 8));
+            w[(((l + 8) >> 6) + 1) * 16 - 1] = l * 8;
+            let h = H.slice(0, 8);
+            for (let j = 0; j < w.length; j += 16) {
+                const x = [];
+                for (let i = 0; i < 16; i++) x[i] = w[j + i] | 0;
+                for (let i = 16; i < 64; i++) {
+                    const s0 = rr(x[i - 15], 7) ^ rr(x[i - 15], 18) ^ (x[i - 15] >>> 3);
+                    const s1 = rr(x[i - 2], 17) ^ rr(x[i - 2], 19) ^ (x[i - 2] >>> 10);
+                    x[i] = (x[i - 16] + s0 + x[i - 7] + s1) | 0;
+                }
+                let [a, b, c, d, e, f, g, hh] = h;
+                for (let i = 0; i < 64; i++) {
+                    const t1 = (hh + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + x[i]) | 0;
+                    const t2 = ((rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+                    hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+                }
+                h = [h[0] + a | 0, h[1] + b | 0, h[2] + c | 0, h[3] + d | 0, h[4] + e | 0, h[5] + f | 0, h[6] + g | 0, h[7] + hh | 0];
+            }
+            return h.map(v => ('00000000' + (v >>> 0).toString(16)).slice(-8)).join('');
+        }
+        function cifrarPassword(pass) { return 'sha256$' + sha256Hex('PIBE::' + pass); }
+        function estaCifrada(pass) { return typeof pass === 'string' && pass.startsWith('sha256$'); }
+        function verificarPassword(usr, ingresada) {
+            if (usr.rol === 'ADMIN') return estaCifrada(usr.password) ? usr.password === cifrarPassword(ingresada) : usr.password === ingresada;
+            return usr.password === ingresada;
+        }
+        function esAdminActual() { return !!usuarioActual && usuarioActual.rol === 'ADMIN'; }
+
+        function puede(accion) {
+            if (!usuarioActual) return false;
+            if (usuarioActual.rol === 'ADMIN') return true;
+            return !!(usuarioActual.acciones && usuarioActual.acciones[accion]);
+        }
+
+        function guardarUsuariosDB() { localStorage.setItem(USERS_KEY, JSON.stringify(usersDB)); }
+
+        function cargarUsuariosDB() {
+            try { usersDB = JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); } catch (e) { usersDB = []; }
+            if (!Array.isArray(usersDB)) usersDB = [];
+            if (!usersDB.some(u => u.username === 'admin')) {
+                usersDB.unshift({
+                    id: 1, nombre: 'Administrador de Sistemas', username: 'admin', password: cifrarPassword('admin123'), rol: 'ADMIN',
+                    acciones: { crear: true, editar: true, eliminar: true, exportar: true, importar: true, verPass: true }
+                });
+            }
+            usersDB.forEach(u => { if (u.rol === 'ADMIN' && !estaCifrada(u.password)) u.password = cifrarPassword(u.password); });
+            guardarUsuariosDB();
+        }
+
+        function iniciarAuth() {
+            cargarUsuariosDB();
+            const id = sessionStorage.getItem(SESSION_KEY);
+            usuarioActual = id ? (usersDB.find(u => String(u.id) === String(id)) || null) : null;
+            if (usuarioActual) aplicarSesion();
+        }
+
+        function iniciarSesionCorreos(e) {
+            e.preventDefault();
+            const user = document.getElementById('login-user').value.trim().toLowerCase();
+            const pass = document.getElementById('login-pass').value;
+            const err = document.getElementById('login-error');
+            const usr = usersDB.find(u => u.username.toLowerCase() === user && verificarPassword(u, pass));
+            if (!usr) {
+                err.textContent = 'Usuario o contraseña incorrectos.';
+                err.classList.remove('hidden');
+                return;
+            }
+            err.classList.add('hidden');
+            sessionStorage.setItem(SESSION_KEY, String(usr.id));
+            usuarioActual = usr;
+            document.getElementById('login-form').reset();
+            aplicarSesion();
+        }
+
+        function aplicarSesion() {
+            document.body.classList.add('autenticado');
+            document.getElementById('sesion-nombre').textContent = `${usuarioActual.nombre} · ${esAdminActual() ? 'Administrador' : 'Sistemas'}`;
+            document.getElementById('btn-panel-usuarios').style.display = esAdminActual() ? 'inline-block' : 'none';
+            document.getElementById('seccion-usuarios').classList.add('hidden');
+            aplicarAccionesCorreo();
+            renderSubFilters();
+            renderEmails();
+            renderUsuariosCorreos();
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function cerrarSesionCorreos() {
+            sessionStorage.removeItem(SESSION_KEY);
+            usuarioActual = null;
+            visiblePasswords.clear();
+            document.body.classList.remove('autenticado');
+            document.getElementById('seccion-usuarios').classList.add('hidden');
+            renderEmails();
+            setTimeout(() => document.getElementById('login-user').focus(), 50);
+        }
+
+        // Muestra solo las opciones que el usuario puede usar
+        function aplicarAccionesCorreo() {
+            const sec = document.getElementById('seccion-crear');
+            if (sec) sec.classList.toggle('hidden', !puede('crear'));
+            const toggle = (el, ok) => { if (el) el.classList.toggle('hidden', !ok); };
+            document.querySelectorAll('[onclick="exportarExcel(false)"], [onclick="exportarExcel(true)"]').forEach(b => toggle(b, puede('exportar')));
+            toggle(document.querySelector('[onclick="descargarPlantillaExcel()"]'), puede('importar'));
+            const imp = document.getElementById('import-excel-file');
+            toggle(imp && imp.closest('label'), puede('importar'));
+        }
+
+        function abrirPanelUsuarios() {
+            if (!esAdminActual()) return;
+            const sec = document.getElementById('seccion-usuarios');
+            sec.classList.toggle('hidden');
+            if (!sec.classList.contains('hidden')) { renderUsuariosCorreos(); sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        }
+
+        function renderUsuariosCorreos() {
+            const tbody = document.getElementById('usuarios-correos-body');
+            tbody.innerHTML = '';
+            if (!esAdminActual()) return;
+            usersDB.forEach(u => {
+                const esPrincipal = u.username === 'admin';
+                const esYo = u.id === usuarioActual.id;
+                const permisos = u.rol === 'ADMIN' ? 'Acceso total'
+                    : (Object.keys(ACCIONES_CORREO).filter(k => u.acciones && u.acciones[k]).map(k => ACCIONES_CORREO[k]).join(' / ') || 'Solo lectura');
+                const passCell = u.rol === 'ADMIN'
+                    ? '<span class="text-slate-400"><i data-lucide="lock" class="w-3 h-3 inline"></i> Cifrada (oculta)</span>'
+                    : `<span id="ucpw_${u.id}" data-visible="0" class="font-mono text-amber-300">••••••••</span> <button type="button" onclick="alternarPassUsuarioCorreos(${u.id})" class="ml-1 text-slate-400 hover:text-amber-300 cursor-pointer" title="Mostrar / ocultar"><i data-lucide="eye" class="w-3.5 h-3.5 inline"></i></button>`;
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/30';
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-white">${escapeHTML(u.nombre)}</td>
+                    <td class="p-3 font-mono text-slate-300">${escapeHTML(u.username)}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${u.rol === 'ADMIN' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' : 'bg-slate-800 text-slate-300 border-slate-700'}">${u.rol === 'ADMIN' ? 'Administrador' : 'Sistemas'}</span></td>
+                    <td class="p-3">${passCell}</td>
+                    <td class="p-3 text-slate-400">${escapeHTML(permisos)}</td>
+                    <td class="p-3 text-right"><div class="flex justify-end gap-3">
+                        <button type="button" onclick="editarUsuarioCorreos(${u.id})" class="text-sky-300 hover:text-sky-200 font-semibold cursor-pointer">Editar</button>
+                        ${(esPrincipal || esYo) ? '' : `<button type="button" onclick="eliminarUsuarioCorreos(${u.id})" class="text-rose-300 hover:text-rose-200 font-semibold cursor-pointer">Eliminar</button>`}
+                    </div></td>`;
+                tbody.appendChild(tr);
+            });
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function alternarPassUsuarioCorreos(id) {
+            if (!esAdminActual()) return;
+            const span = document.getElementById('ucpw_' + id), u = usersDB.find(x => x.id === id);
+            if (!span || !u) return;
+            const mostrar = span.dataset.visible !== '1';
+            span.textContent = mostrar ? u.password : '••••••••';
+            span.dataset.visible = mostrar ? '1' : '0';
+        }
+
+        function marcarAccionesCorreos(valor) {
+            Object.keys(ACCIONES_CORREO).forEach(k => { const cb = document.getElementById('cu_' + k); if (cb && !cb.disabled) cb.checked = valor; });
+        }
+
+        function alCambiarRolCorreos() {
+            const esAdmin = document.getElementById('uc_rol').value === 'ADMIN';
+            Object.keys(ACCIONES_CORREO).forEach(k => { const cb = document.getElementById('cu_' + k); if (esAdmin) cb.checked = true; cb.disabled = esAdmin; });
+            document.getElementById('uc_rol_hint').textContent = esAdmin ? 'Acceso total y gestión de usuarios.' : 'Solo hará lo que marques.';
+            const editId = document.getElementById('uc_id').value;
+            const previo = editId ? usersDB.find(u => u.id === parseInt(editId)) : null;
+            const conservable = !!(previo && previo.rol === 'ADMIN' && esAdmin && estaCifrada(previo.password));
+            const inp = document.getElementById('uc_password'), hint = document.getElementById('uc_pass_hint');
+            inp.required = !conservable;
+            inp.placeholder = conservable ? 'Vacío = conservar la actual' : 'Asignar contraseña';
+            hint.classList.toggle('hidden', !esAdmin);
+            hint.textContent = esAdmin ? 'Se guarda cifrada: nadie podrá verla (mín. 6 caracteres).' : '';
+            document.getElementById('uc_rol').disabled = !!(previo && (previo.username === 'admin' || previo.id === usuarioActual.id));
+        }
+
+        function guardarUsuarioCorreos(e) {
+            e.preventDefault();
+            if (!esAdminActual()) return showToast('Acceso denegado.', 'error');
+            const editId = document.getElementById('uc_id').value;
+            const previo = editId ? usersDB.find(u => u.id === parseInt(editId)) : null;
+            if (editId && !previo) return;
+            const rol = document.getElementById('uc_rol').value === 'ADMIN' ? 'ADMIN' : 'USUARIO';
+            const esAdmin = rol === 'ADMIN';
+            const username = document.getElementById('uc_username').value.trim();
+
+            if (previo && previo.username === 'admin' && (!esAdmin || username.toLowerCase() !== 'admin')) return alert('La cuenta principal "admin" no puede cambiar de rol ni de nombre de usuario.');
+            if (previo && previo.id === usuarioActual.id && !esAdmin) return alert('No puedes quitarte a ti mismo el rol de administrador.');
+            if (usersDB.some(u => (!previo || u.id !== previo.id) && u.username.toLowerCase() === username.toLowerCase())) return alert('Ese nombre de usuario ya existe.');
+
+            let pass = document.getElementById('uc_password').value.trim();
+            if (!pass) {
+                if (previo && previo.rol === rol && esAdmin && estaCifrada(previo.password)) pass = previo.password;
+                else return alert('Escribe una contraseña para este usuario.');
+            } else if (esAdmin) {
+                if (pass.length < 6) return alert('La contraseña de un administrador debe tener al menos 6 caracteres.');
+                pass = cifrarPassword(pass);
+            }
+            const acciones = {};
+            Object.keys(ACCIONES_CORREO).forEach(k => { acciones[k] = esAdmin || document.getElementById('cu_' + k).checked; });
+            const datos = { id: previo ? previo.id : Date.now(), nombre: document.getElementById('uc_nombre').value.trim(), username, password: pass, rol, acciones };
+
+            if (previo) {
+                usersDB[usersDB.findIndex(u => u.id === previo.id)] = datos;
+                if (usuarioActual.id === datos.id) usuarioActual = datos;
+            } else usersDB.push(datos);
+
+            guardarUsuariosDB();
+            cancelarUsuarioCorreos();
+            renderUsuariosCorreos();
+            showToast(esAdmin ? 'Administrador guardado.' : 'Usuario guardado.', 'success');
+        }
+
+        function editarUsuarioCorreos(id) {
+            if (!esAdminActual()) return;
+            const u = usersDB.find(x => x.id === id);
+            if (!u) return;
+            document.getElementById('uc_id').value = u.id;
+            document.getElementById('uc_nombre').value = u.nombre;
+            document.getElementById('uc_username').value = u.username;
+            document.getElementById('uc_password').value = u.rol === 'ADMIN' ? '' : u.password;
+            document.getElementById('uc_rol').value = u.rol === 'ADMIN' ? 'ADMIN' : 'USUARIO';
+            Object.keys(ACCIONES_CORREO).forEach(k => { document.getElementById('cu_' + k).checked = !!(u.acciones && u.acciones[k]); });
+            alCambiarRolCorreos();
+            document.getElementById('btn-guardar-uc').textContent = 'Actualizar usuario';
+            document.getElementById('form-usuarios-correos').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function cancelarUsuarioCorreos() {
+            document.getElementById('form-usuarios-correos').reset();
+            document.getElementById('uc_id').value = '';
+            document.getElementById('btn-guardar-uc').textContent = 'Guardar usuario';
+            alCambiarRolCorreos();
+        }
+
+        function eliminarUsuarioCorreos(id) {
+            if (!esAdminActual()) return;
+            const u = usersDB.find(x => x.id === id);
+            if (!u || u.username === 'admin' || u.id === usuarioActual.id) return alert('Esta cuenta no se puede eliminar.');
+            if (!confirm(`¿Eliminar el acceso de "${u.nombre}"?`)) return;
+            usersDB = usersDB.filter(x => x.id !== id);
+            guardarUsuariosDB();
+            renderUsuariosCorreos();
+            showToast('Usuario eliminado.', 'success');
+        }
+    </script>
+</body>
+</html>

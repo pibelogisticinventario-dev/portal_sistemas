@@ -1,0 +1,3017 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inventario y Responsivas | PIBE LOGISTIC</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (xlsx) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            forest: '#006837',
+                            emerald: '#52B043',
+                            dark: '#090d16'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Fondo corporativo oscuro con destellos radiales en verde bosque y esmeralda */
+        body {
+            background-color: #090d16;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(0, 104, 55, 0.22) 0px, transparent 52%),
+                radial-gradient(at 100% 10%, rgba(82, 176, 67, 0.14) 0px, transparent 48%),
+                radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.95) 0px, transparent 55%);
+            background-attachment: fixed;
+            color: #f8fafc;
+        }
+
+        /* Efecto Glassmorphism */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        .bento-card {
+            background: rgba(15, 23, 42, 0.76);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .bento-card:hover {
+            border-color: rgba(82, 176, 67, 0.55);
+            box-shadow: 0 20px 40px -15px rgba(0, 104, 55, 0.35), 0 0 24px rgba(82, 176, 67, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .brand-gradient {
+            background: linear-gradient(135deg, #006837 0%, #52B043 100%);
+        }
+
+        .brand-gradient-hover:hover {
+            background: linear-gradient(135deg, #007d43 0%, #5ec74c 100%);
+            box-shadow: 0 8px 24px -4px rgba(82, 176, 67, 0.45);
+        }
+
+        /* Estilos unificados para inputs y selects en modo oscuro */
+        .input-dark {
+            background-color: rgba(2, 6, 23, 0.75);
+            border: 1px solid rgba(51, 65, 85, 0.9);
+            color: #f8fafc;
+            border-radius: 0.75rem;
+            transition: all 0.2s ease;
+        }
+        .input-dark::placeholder {
+            color: #64748b;
+        }
+        .input-dark:focus {
+            outline: none;
+            border-color: #52B043;
+            box-shadow: 0 0 0 3px rgba(82, 176, 67, 0.18);
+        }
+        .input-dark option {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        /* Scrollbar personalizado */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #52B043;
+        }
+
+        /* Ocultar elementos de impresión en pantalla normal por defecto */
+        .print-only { 
+            display: none; 
+        }
+
+        /* Mostrar la vista de formato en pantalla cuando se le quita 'hidden' */
+        #vistaFormatoComputo:not(.hidden),
+        #vistaFormatoTelefono:not(.hidden) {
+            display: block !important;
+        }
+
+        /* REGLAS EXCLUSIVAS PARA IMPRESIÓN (Ctrl+P / Imprimir) */
+        @page {
+            size: letter portrait;
+            margin: 8mm;
+        }
+
+        @media print {
+            html, body {
+                height: 100%;
+                background: #fff !important;
+                background-image: none !important;
+                color: #000 !important;
+                font-size: 10px !important;
+            }
+            
+            img {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                max-height: 50px !important;
+                width: auto !important;
+            }
+            
+            .no-print, main, header { 
+                display: none !important; 
+            }
+
+            #vistaFormatoComputo, 
+            #vistaFormatoTelefono { 
+                display: none !important; 
+            }
+
+            #vistaFormatoComputo.modo-impresion, 
+            #vistaFormatoTelefono.modo-impresion { 
+                display: block !important; 
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+        }
+
+        .excel-header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #52B043; }
+        .excel-green-header { background: linear-gradient(135deg, #006837 0%, #14532d 100%); color: #ffffff; }
+        .pibe-green-header { background-color: #006837; color: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .pibe-green-text { color: #006837; }
+    </style>
+<style>
+/* Oculta los botones de acciones que el usuario no tiene permitidas */
+body.sin-editar-computo [onclick^="editarActivo("], body.sin-eliminar-computo [onclick^="eliminarActivo("],
+body.sin-editar-telefonos [onclick^="editarTelefono("], body.sin-eliminar-telefonos [onclick^="eliminarTelefono("],
+body.sin-editar-resp_computo [onclick^="liberarResponsivaComputo("], body.sin-editar-resp_telefonos [onclick^="liberarResponsivaTelefono("] { display: none !important; }
+</style>
+<style>
+/* Formato de responsiva con identidad CLOC LOGISTIC (rojo) */
+.tema-cloc .pibe-green-header { background-color: #C80000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.tema-cloc .pibe-green-text { color: #C80000 !important; }
+.tema-cloc .border-green-700 { border-color: #C80000 !important; }
+</style>
+<link rel="manifest" href="../../manifest.json">
+<meta name="theme-color" content="#006837">
+<link rel="icon" href="../../imagenes/iconos/icono_equipos.png">
+</head>
+<body class="min-h-screen font-sans antialiased selection:bg-[#52B043] selection:text-slate-950">
+<style>
+#pibe-nav{background:#0b1220;border-bottom:1px solid rgba(82,176,67,.35);font-family:Inter,system-ui,sans-serif}
+#pibe-nav .in{max-width:80rem;margin:0 auto;padding:8px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+#pibe-nav a.back,#pibe-fab{display:inline-flex;align-items:center;gap:8px;background:#006837;color:#fff;font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;text-decoration:none;border:1px solid #52B043;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+#pibe-nav a.back:hover,#pibe-fab:hover{background:#52B043;color:#04130a}
+#pibe-nav .t{color:#fff;font-weight:700;font-size:13px}#pibe-nav .d{color:#94a3b8;font-size:12px}
+#pibe-fab{position:fixed;left:16px;bottom:16px;z-index:60}
+@media(max-width:640px){#pibe-nav .d{display:none}}
+@media print{#pibe-nav,#pibe-fab{display:none!important}}
+</style>
+<div id="pibe-nav"><div class="in">
+<a class="back" href="../../index.html">← Volver al Inicio</a>
+<span class="t">Inventario y Responsivas</span><span class="d">Registra equipos y celulares, y genera las responsivas para imprimir.</span></div></div>
+<a id="pibe-fab" href="../../index.html" title="Volver al Inicio">← Inicio</a>
+
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-30 glass-card border-b border-slate-800/80 no-print">
+        <div class="max-w-[98%] mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center gap-4">
+            
+            <!-- Identidad PIBE LOGISTIC -->
+            <div class="flex items-center gap-3.5">
+                <img src="../../imagenes/iconos/icono_equipos.png" alt="Inventario de Equipos" class="w-12 h-12 rounded-2xl shadow-lg shadow-emerald-950/60 shrink-0">
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">Control de Inventario y Responsivas</h1>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#52B043]/15 text-[#52B043] border border-[#52B043]/35">
+                            Activos TI
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">PIBE LOGISTIC • Departamento de Sistemas</p>
+                </div>
+            </div>
+            
+            <!-- Info del Usuario Activo, Volver al Hub y Cierre de Sesión -->
+            <div class="flex items-center flex-wrap gap-2.5">
+                <a href="../../index.html" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-[#52B043] border border-slate-700/80 transition flex items-center gap-1.5" title="Regresar al Portal Central de Sistemas TI">
+                    <i class="fa-solid fa-grid-2"></i>
+                    <span class="hidden sm:inline">Portal Hub</span>
+                </a>
+
+                <div id="userInfoBar" class="text-right text-xs bg-slate-900/90 px-3.5 py-1.5 rounded-xl border border-slate-800 flex items-center gap-2.5">
+                    <div class="w-7 h-7 rounded-lg bg-[#52B043]/15 border border-[#52B043]/30 flex items-center justify-center text-[#52B043]">
+                        <i class="fa-solid fa-user-shield text-xs"></i>
+                    </div>
+                    <div class="text-left">
+                        <span id="txtUsuarioActivo" class="font-bold text-white block leading-none">Invitado</span>
+                        <span id="txtRolActivo" class="text-[10px] text-slate-400 font-mono">Sin autenticar</span>
+                    </div>
+                </div>
+
+                <button id="btnAuthAction" onclick="abrirModalLogin()" class="brand-gradient brand-gradient-hover text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+                </button>
+            </div>
+
+            <!-- Opciones de Exportación e Importación -->
+            <div id="seccionExcelOps" class="flex items-center flex-wrap gap-2 w-full pt-3 border-t border-slate-800/80">
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-excel text-[#52B043]"></i> Operaciones Excel:
+                </span>
+
+                <!-- EXPORTAR -->
+                <button onclick="exportarExcelComputo()" class="bg-sky-950/70 hover:bg-sky-900/80 text-sky-300 border border-sky-700/50 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer" title="Exportar solo Cómputo">
+                    <i class="fa-solid fa-laptop"></i> Exp. Cómputo
+                </button>
+                <button onclick="exportarExcelTelefonos()" class="bg-emerald-950/70 hover:bg-emerald-900/80 text-[#52B043] border border-[#52B043]/40 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer" title="Exportar solo Teléfonos">
+                    <i class="fa-solid fa-mobile-screen-button"></i> Exp. Teléfonos
+                </button>
+                <button onclick="exportarExcelGeneral()" class="brand-gradient brand-gradient-hover text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer" title="Exportar Cómputo y Teléfonos juntas">
+                    <i class="fa-solid fa-file-export"></i> Reporte General
+                </button>
+                
+                <div class="h-5 w-px bg-slate-800 mx-1 hidden sm:block"></div>
+
+                <!-- IMPORTAR -->
+                <label class="bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1.5" title="Importar archivo a Cómputo">
+                    <i class="fa-solid fa-file-import text-sky-400"></i> Imp. Cómputo
+                    <input type="file" accept=".xlsx, .xls, .csv" onchange="importarEspecifico(event, 'computo')" class="hidden">
+                </label>
+
+                <label class="bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1.5" title="Importar archivo a Teléfonos">
+                    <i class="fa-solid fa-file-import text-[#52B043]"></i> Imp. Teléfonos
+                    <input type="file" accept=".xlsx, .xls, .csv" onchange="importarEspecifico(event, 'telefonos')" class="hidden">
+                </label>
+
+                <label class="bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 border border-amber-700/50 text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1.5" title="Importar libro completo">
+                    <i class="fa-solid fa-folder-open"></i> Imp. Todo (Auto)
+                    <input type="file" accept=".xlsx, .xls, .csv" onchange="importarExcelAuto(event)" class="hidden">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-[98%] mx-auto p-4 sm:p-6 no-print space-y-6">
+
+        <!-- Tabs de Navegación -->
+        <div class="glass-card flex flex-wrap gap-1.5 p-2 rounded-2xl border border-slate-800/90">
+            <button onclick="cambiarTab('tab-dashboard')" id="btn-tab-dashboard" class="hidden py-2 px-4 text-xs font-bold rounded-xl brand-gradient text-white shadow flex items-center gap-2 cursor-pointer transition">
+                <img src="../../imagenes/iconos/icono_dashboard.png" alt="" class="w-5 h-5 rounded-md"> Dashboard
+            </button>
+            <button onclick="cambiarTab('tab-inventario')" id="btn-tab-inventario" class="hidden py-2 px-4 text-xs font-bold rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/70 flex items-center gap-2 cursor-pointer transition">
+                <i class="fa-solid fa-laptop"></i> Cómputo
+            </button>
+            <button onclick="cambiarTab('tab-telefonos')" id="btn-tab-telefonos" class="hidden py-2 px-4 text-xs font-bold rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/70 flex items-center gap-2 cursor-pointer transition">
+                <i class="fa-solid fa-mobile-screen-button"></i> Teléfonos
+            </button>
+            <button onclick="cambiarTab('tab-responsivas-computo')" id="btn-tab-responsivas-computo" class="hidden py-2 px-4 text-xs font-bold rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/70 flex items-center gap-2 cursor-pointer transition">
+                <i class="fa-solid fa-file-signature text-sky-400"></i> Responsivas Cómputo
+            </button>
+            <button onclick="cambiarTab('tab-responsivas-telefonos')" id="btn-tab-responsivas-telefonos" class="hidden py-2 px-4 text-xs font-bold rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/70 flex items-center gap-2 cursor-pointer transition">
+                <i class="fa-solid fa-file-contract text-[#52B043]"></i> Responsivas Teléfonos
+            </button>
+            <button onclick="cambiarTab('tab-admin-users')" id="btn-tab-admin-users" class="hidden py-2 px-4 text-xs font-bold rounded-xl text-purple-300 bg-purple-950/50 border border-purple-700/40 hover:bg-purple-900/60 flex items-center gap-2 cursor-pointer transition">
+                <i class="fa-solid fa-user-gear text-purple-400"></i> Módulo Administrador (Usuarios)
+            </button>
+        </div>
+
+        <!-- TAB 0: DASHBOARD -->
+        <section id="tab-dashboard" class="hidden space-y-6">
+            <div class="glass-card rounded-2xl p-5 sm:p-6 border border-slate-800/90 flex justify-between items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2.5">
+                        <img src="../../imagenes/iconos/icono_dashboard.png" alt="Dashboard" class="w-9 h-9 rounded-xl shadow-lg shrink-0">
+                        Métrica General de Inventario y Responsivas
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Indicadores consolidados de activos asignados y estatus de documentación</p>
+                </div>
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/70 border border-[#52B043]/30 text-[#52B043] text-xs font-semibold">
+                    <span class="w-2 h-2 rounded-full bg-[#52B043] animate-pulse"></span>
+                    Actualizado en tiempo real
+                </span>
+            </div>
+
+            <!-- TARJETAS PRINCIPALES DE ESTATUS DE RESPONSIVAS (BENTO CARDS) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="bento-card p-6 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Responsivas Emitidas</p>
+                        <h3 id="dash_total_responsivas" class="text-3xl font-extrabold text-white mt-1.5 font-mono">0</h3>
+                        <p class="text-xs text-slate-400 mt-1">Cómputo + Teléfonos</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-file-circle-check"></i>
+                    </div>
+                </div>
+
+                <div class="bento-card p-6 rounded-2xl border-emerald-500/25 flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Responsivas Firmadas (Completadas)</p>
+                        <h3 id="dash_responsivas_completadas" class="text-3xl font-extrabold text-[#52B043] mt-1.5 font-mono">0</h3>
+                        <p class="text-xs text-emerald-400/90 mt-1"><i class="fa-solid fa-check mr-1"></i> Con PDF adjunto en sistema</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-[#52B043]/15 border border-[#52B043]/35 text-[#52B043] flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </div>
+                </div>
+
+                <div class="bento-card p-6 rounded-2xl border-amber-500/25 flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">En Proceso de Firma</p>
+                        <h3 id="dash_responsivas_proceso" class="text-3xl font-extrabold text-amber-400 mt-1.5 font-mono">0</h3>
+                        <p class="text-xs text-amber-400/90 mt-1"><i class="fa-solid fa-clock mr-1"></i> Pendiente cargar PDF firmado</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/35 text-amber-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DESGLOSE DE RESPONSIVAS Y ESTADO DE EQUIPOS -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- INVENTARIO CÓMPUTO -->
+                <div class="bento-card p-6 rounded-2xl space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3.5">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center text-sm">
+                                <i class="fa-solid fa-laptop"></i>
+                            </div>
+                            Inventario de Cómputo
+                        </h3>
+                        <span id="dash_total_computo" class="text-xs font-mono font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 px-3 py-1 rounded-full">0 Equipos</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                            <span class="text-slate-400 font-medium">Disponibles:</span>
+                            <p id="dash_comp_disponibles" class="text-xl font-extrabold text-[#52B043] font-mono mt-0.5">0</p>
+                        </div>
+                        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                            <span class="text-slate-400 font-medium">Asignados:</span>
+                            <p id="dash_comp_asignados" class="text-xl font-extrabold text-sky-400 font-mono mt-0.5">0</p>
+                        </div>
+                        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                            <span class="text-slate-400 font-medium">En Mantenimiento:</span>
+                            <p id="dash_comp_mantenimiento" class="text-xl font-extrabold text-amber-400 font-mono mt-0.5">0</p>
+                        </div>
+                        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                            <span class="text-slate-400 font-medium">Baja:</span>
+                            <p id="dash_comp_baja" class="text-xl font-extrabold text-rose-400 font-mono mt-0.5">0</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-800 pt-4 text-xs space-y-2.5">
+                        <p class="font-bold text-slate-300 uppercase tracking-wider text-[11px]">Estado de Responsivas (Cómputo):</p>
+                        <div class="flex justify-between items-center bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-xl">
+                            <span class="text-slate-300"><i class="fa-solid fa-check-circle text-[#52B043] mr-1.5"></i> Firmadas (PDF Cargado):</span>
+                            <span id="dash_resp_comp_completadas" class="font-mono font-bold text-white">0</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-xl">
+                            <span class="text-slate-300"><i class="fa-solid fa-hourglass-half text-amber-400 mr-1.5"></i> En Proceso de Firma:</span>
+                            <span id="dash_resp_comp_proceso" class="font-mono font-bold text-white">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTROL DE TELÉFONOS -->
+                <div class="bento-card p-6 rounded-2xl space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3.5">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-[#52B043]/15 border border-[#52B043]/30 text-[#52B043] flex items-center justify-center text-sm">
+                                <i class="fa-solid fa-mobile-screen-button"></i>
+                            </div>
+                            Control de Teléfonos
+                        </h3>
+                        <span id="dash_total_telefonos" class="text-xs font-mono font-bold bg-[#52B043]/15 text-[#52B043] border border-[#52B043]/30 px-3 py-1 rounded-full">0 Líneas</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                            <span class="text-slate-400 font-medium">Disponibles:</span>
+                            <p id="dash_tel_disponibles" class="text-xl font-extrabold text-[#52B043] font-mono mt-0.5">0</p>
+                        </div>
+                        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                            <span class="text-slate-400 font-medium">Asignados:</span>
+                            <p id="dash_tel_asignados" class="text-xl font-extrabold text-sky-400 font-mono mt-0.5">0</p>
+                        </div>
+                        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                            <span class="text-slate-400 font-medium">En Mantenimiento:</span>
+                            <p id="dash_tel_mantenimiento" class="text-xl font-extrabold text-amber-400 font-mono mt-0.5">0</p>
+                        </div>
+                        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                            <span class="text-slate-400 font-medium">Baja:</span>
+                            <p id="dash_tel_baja" class="text-xl font-extrabold text-rose-400 font-mono mt-0.5">0</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-800 pt-4 text-xs space-y-2.5">
+                        <p class="font-bold text-slate-300 uppercase tracking-wider text-[11px]">Estado de Responsivas (Teléfonos):</p>
+                        <div class="flex justify-between items-center bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-xl">
+                            <span class="text-slate-300"><i class="fa-solid fa-check-circle text-[#52B043] mr-1.5"></i> Firmadas (PDF Cargado):</span>
+                            <span id="dash_resp_tel_completadas" class="font-mono font-bold text-white">0</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-xl">
+                            <span class="text-slate-300"><i class="fa-solid fa-hourglass-half text-amber-400 mr-1.5"></i> En Proceso de Firma:</span>
+                            <span id="dash_resp_tel_proceso" class="font-mono font-bold text-white">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB MÓDULO ADMINISTRADOR (GESTIÓN DE USUARIOS) -->
+        <section id="tab-admin-users" class="hidden space-y-6">
+            <div class="glass-card p-6 rounded-2xl border border-purple-500/30">
+                <h2 id="tituloFormUsuario" class="text-base sm:text-lg font-bold text-white mb-4 flex items-center gap-2.5 border-b border-slate-800 pb-3">
+                    <span class="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </span>
+                    Registrar / Modificar Usuario de Sistema
+                </h2>
+                <form id="formUsuario" onsubmit="guardarUsuario(event)" class="space-y-4 text-xs">
+                    <input type="hidden" id="usr_id_internal">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block font-semibold text-slate-300 mb-1.5">Nombre Completo del Usuario *</label>
+                            <input type="text" id="usr_nombre" required placeholder="Ej. Juan Pérez" class="w-full input-dark px-3.5 py-2.5">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-300 mb-1.5">Nombre de Usuario (Login) *</label>
+                            <input type="text" id="usr_username" required placeholder="Ej. jperez" class="w-full input-dark px-3.5 py-2.5 font-mono">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-300 mb-1.5">Contraseña *</label>
+                            <input type="text" id="usr_password" required placeholder="Asignar contraseña" class="w-full input-dark px-3.5 py-2.5 font-mono">
+                            <p id="usr_pass_hint" class="hidden text-[10px] text-slate-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-300 mb-1.5">Rol del usuario *</label>
+                            <select id="usr_rol" onchange="alCambiarRol()" class="w-full input-dark px-3.5 py-2.5 font-semibold cursor-pointer">
+                                <option value="USUARIO">Usuario estándar</option>
+                                <option value="ADMIN">Administrador</option>
+                            </select>
+                            <p id="usr_rol_hint" class="text-[10px] text-slate-500 mt-1">Solo verá las áreas que marques.</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-800 pt-4">
+                        <label class="block font-bold text-purple-300 mb-2.5">Áreas que este usuario podrá ver (marca solo las permitidas):
+                            <button type="button" onclick="marcarPermisos(true)" class="ml-3 text-[11px] font-semibold text-sky-300 hover:underline cursor-pointer">Marcar todas</button>
+                            <button type="button" onclick="marcarPermisos(false)" class="ml-2 text-[11px] font-semibold text-slate-400 hover:underline cursor-pointer">Quitar todas</button></label>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 bg-slate-900/80 p-3.5 rounded-xl border border-purple-500/20">
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="perm_dashboard" class="w-4 h-4 accent-purple-500 rounded"> Dashboard
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="perm_computo" class="w-4 h-4 accent-purple-500 rounded"> Cómputo
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="perm_telefonos" class="w-4 h-4 accent-purple-500 rounded"> Teléfonos
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="perm_resp_computo" class="w-4 h-4 accent-purple-500 rounded"> Resp. Cómputo
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="perm_resp_telefonos" class="w-4 h-4 accent-purple-500 rounded"> Resp. Teléfonos
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-800 pt-4">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2.5">
+                            <label class="block font-bold text-purple-300">¿Qué podrá hacer en cada área? (solo aplica a las áreas marcadas arriba):</label>
+                            <button type="button" onclick="marcarAcciones(true)" class="text-[11px] font-semibold text-sky-300 hover:underline cursor-pointer">Todas las acciones</button>
+                            <button type="button" onclick="marcarAcciones(false)" class="text-[11px] font-semibold text-slate-400 hover:underline cursor-pointer">Solo lectura</button>
+                        </div>
+                        <div class="overflow-x-auto bg-slate-900/80 rounded-xl border border-purple-500/20">
+                            <table class="w-full text-xs">
+                                <thead class="text-slate-400 text-[11px] uppercase"><tr><th class="p-2.5 text-left">Área</th><th class="p-2.5">Agregar / editar</th><th class="p-2.5">Eliminar</th><th class="p-2.5">Exportar Excel</th><th class="p-2.5">Importar Excel</th></tr></thead>
+                                <tbody>
+                                    <tr class="border-t border-slate-800/80"><td class="p-2.5 font-semibold text-slate-200 whitespace-nowrap"><i class="fa-solid fa-laptop text-purple-400 mr-1.5"></i>Cómputo</td><td class="p-2.5 text-center"><input type="checkbox" id="act_computo_editar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td><td class="p-2.5 text-center"><input type="checkbox" id="act_computo_eliminar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td><td class="p-2.5 text-center"><input type="checkbox" id="act_computo_exportar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td><td class="p-2.5 text-center"><input type="checkbox" id="act_computo_importar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td></tr>
+                                    <tr class="border-t border-slate-800/80"><td class="p-2.5 font-semibold text-slate-200 whitespace-nowrap"><i class="fa-solid fa-mobile-screen-button text-purple-400 mr-1.5"></i>Teléfonos</td><td class="p-2.5 text-center"><input type="checkbox" id="act_telefonos_editar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td><td class="p-2.5 text-center"><input type="checkbox" id="act_telefonos_eliminar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td><td class="p-2.5 text-center"><input type="checkbox" id="act_telefonos_exportar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td><td class="p-2.5 text-center"><input type="checkbox" id="act_telefonos_importar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td></tr>
+                                    <tr class="border-t border-slate-800/80"><td class="p-2.5 font-semibold text-slate-200 whitespace-nowrap"><i class="fa-solid fa-file-signature text-purple-400 mr-1.5"></i>Resp. Cómputo (generar / liberar)</td><td class="p-2.5 text-center"><input type="checkbox" id="act_resp_computo_editar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td><td class="p-2.5 text-center text-slate-700">—</td><td class="p-2.5 text-center text-slate-700">—</td><td class="p-2.5 text-center text-slate-700">—</td></tr>
+                                    <tr class="border-t border-slate-800/80"><td class="p-2.5 font-semibold text-slate-200 whitespace-nowrap"><i class="fa-solid fa-file-contract text-purple-400 mr-1.5"></i>Resp. Teléfonos (generar / liberar)</td><td class="p-2.5 text-center"><input type="checkbox" id="act_resp_telefonos_editar" class="w-4 h-4 accent-purple-500 rounded cursor-pointer"></td><td class="p-2.5 text-center text-slate-700">—</td><td class="p-2.5 text-center text-slate-700">—</td><td class="p-2.5 text-center text-slate-700">—</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1.5">Ver, imprimir y consultar siempre está permitido en las áreas marcadas. Un usuario sin "Exportar" no verá esos botones.</p>
+                    </div>
+
+                    <div class="flex justify-end gap-2.5 pt-2">
+                        <button type="button" onclick="cancelarEdicionUsuario()" id="btnCancelarUsuario" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs py-2.5 px-4 rounded-xl transition cursor-pointer">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="btnGuardarUsuario" class="bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-save"></i> Guardar Usuario
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TABLA DE USUARIOS CREADOS -->
+            <div class="glass-card rounded-2xl border border-slate-800/90 overflow-hidden">
+                <div class="p-4 bg-slate-900/80 border-b border-slate-800 flex justify-between items-center flex-wrap gap-2">
+                    <h3 class="font-bold text-white flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-users text-purple-400"></i> Usuarios Registrados y Control de Accesos
+                    </h3>
+                    <span class="text-xs text-slate-400">Solo el Administrador ve esta tabla. Usa el ojo para ver la contraseña de cada usuario.</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-purple-950/80 text-purple-200 font-semibold uppercase text-[11px] border-b border-purple-800/50">
+                            <tr>
+                                <th class="p-3">Nombre Completo</th>
+                                <th class="p-3">Usuario</th>
+                                <th class="p-3">Contraseña (Texto Claro)</th>
+                                <th class="p-3">Rol</th>
+                                <th class="p-3">Módulos Permitidos</th>
+                                <th class="p-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaUsuarios" class="divide-y divide-slate-800/80 bg-slate-950/40">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 1: INVENTARIO CÓMPUTO -->
+        <section id="tab-inventario" class="hidden space-y-6">
+            <div class="glass-card p-6 rounded-2xl border border-slate-800/90">
+                <h2 id="tituloFormActivo" class="text-base sm:text-lg font-bold text-white mb-4 flex items-center gap-2.5 border-b border-slate-800 pb-3">
+                    <span class="w-8 h-8 rounded-xl brand-gradient flex items-center justify-center text-white text-sm">
+                        <i class="fa-solid fa-plus"></i>
+                    </span>
+                    Registrar / Modificar Equipo de Cómputo
+                </h2>
+                <form id="formActivo" onsubmit="guardarActivo(event)" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3.5 text-xs">
+                    <input type="hidden" id="inv_id_internal">
+                    
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">ID ACTIVO *</label>
+                        <input type="text" id="inv_id_activo" required placeholder="Ej. PIBE-LAP-001" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">EMPRESA ASIGNADA *</label>
+                        <select id="inv_empresa" required class="w-full input-dark px-3 py-2 font-semibold">
+                            <option value="PIBE">PIBE LOGISTIC</option>
+                            <option value="CLOC">CLOC LOGISTIC</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">PLAZA / UBICACIÓN *</label>
+                        <select id="inv_plaza" required class="w-full input-dark px-3 py-2 font-semibold">
+                            <option value="">Seleccione Plaza...</option>
+                            <option value="CIUDAD DE MEXICO">CIUDAD DE MEXICO</option>
+                            <option value="MONTERREY">MONTERREY</option>
+                            <option value="VERACRUZ">VERACRUZ</option>
+                            <option value="GUADALAJARA">GUADALAJARA</option>
+                            <option value="SONORA">SONORA</option>
+                            <option value="TIJUANA">TIJUANA</option>
+                            <option value="VILLA HERMOSA">VILLA HERMOSA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">NOMBRE DE RED</label>
+                        <input type="text" id="inv_nombre_red" placeholder="Ej. PIBE-PC01" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">MARCA *</label>
+                        <input type="text" id="inv_marca" required placeholder="Ej. Lenovo / HP" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">TIPO *</label>
+                        <select id="inv_tipo" required class="w-full input-dark px-3 py-2 font-semibold">
+                            <option value="">Seleccione Tipo...</option>
+                            <option value="LAPTOP">LAPTOP</option>
+                            <option value="DESKTOP">DESKTOP</option>
+                            <option value="TABLET">TABLET</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">MODELO *</label>
+                        <input type="text" id="inv_modelo" required placeholder="Ej. V14 G4" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">COLOR</label>
+                        <input type="text" id="inv_color" placeholder="Ej. Negro / Gris" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">SERIAL *</label>
+                        <input type="text" id="inv_serial" required placeholder="Ej. SN-987654" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">PASSWORD ADMIN</label>
+                        <input type="text" id="inv_pass_admin" placeholder="Contraseña Admin" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">PASSWORD ADMIN NEW</label>
+                        <input type="text" id="inv_pass_admin_new" placeholder="Nueva Contraseña" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">PASSWORD USER</label>
+                        <input type="text" id="inv_pass_user" placeholder="Contraseña Usuario" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">PROCESADOR</label>
+                        <input type="text" id="inv_procesador" placeholder="Ej. Intel i5" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">RAM (GB)</label>
+                        <input type="number" id="inv_ram" placeholder="Ej. 8" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">SISTEMA OPERATIVO</label>
+                        <input type="text" id="inv_so" placeholder="Ej. Windows 11 Pro" class="w-full input-dark px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">OFFICE</label>
+                        <input type="text" id="inv_office" placeholder="Ej. Office 2021" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">TECLADO SERIAL</label>
+                        <input type="text" id="inv_teclado_serial" placeholder="SI / NA / Serial" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">MOUSE SERIAL</label>
+                        <input type="text" id="inv_mouse_serial" placeholder="SI / NA / Serial" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">ESTADO ACTIVO *</label>
+                        <select id="inv_estado_activo" required class="w-full input-dark px-3 py-2 font-semibold">
+                            <option value="DISPONIBLE">DISPONIBLE</option>
+                            <option value="ASIGNADO" selected>ASIGNADO</option>
+                            <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+                            <option value="BAJA">BAJA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">ASIGNADO A (ID)</label>
+                        <input type="text" id="inv_asignado_id" placeholder="ID / Num Empleado" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">COLABORADOR</label>
+                        <input type="text" id="inv_colaborador" placeholder="Nombre Completo" class="w-full input-dark px-3 py-2">
+                    </div>
+
+                    <div class="lg:col-span-6 flex justify-end gap-2.5 mt-2 pt-3 border-t border-slate-800/80">
+                        <button type="button" onclick="cancelarEdicion()" id="btnCancelarEdicion" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs py-2.5 px-4 rounded-xl transition cursor-pointer">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="btnGuardarActivo" class="brand-gradient brand-gradient-hover text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-save"></i> Guardar Activo
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="glass-card rounded-2xl border border-slate-800/90 overflow-hidden">
+                <div class="p-4 bg-slate-900/80 border-b border-slate-800 flex justify-between items-center flex-wrap gap-3">
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-[#52B043]"></i>
+                        Listado de Equipos Registrados
+                    </h3>
+                    <div class="relative w-full sm:w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="buscarInventario" onkeyup="renderizarInventario()" placeholder="Buscar por ID, plaza, serie, colaborador..." class="w-full input-dark pl-8 pr-3 py-1.5 text-xs">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                        <thead class="excel-header font-bold uppercase text-[11px] tracking-wide border-b border-slate-700">
+                            <tr>
+                                <th class="p-2.5 border-r border-slate-800">ID ACTIVO</th>
+                                <th class="p-2.5 border-r border-slate-800">PLAZA</th>
+                                <th class="p-2.5 border-r border-slate-800">NOMBRE DE RED</th>
+                                <th class="p-2.5 border-r border-slate-800">MARCA</th>
+                                <th class="p-2.5 border-r border-slate-800">TIPO</th>
+                                <th class="p-2.5 border-r border-slate-800">MODELO</th>
+                                <th class="p-2.5 border-r border-slate-800">COLOR</th>
+                                <th class="p-2.5 border-r border-slate-800">SERIAL</th>
+                                <th class="p-2.5 border-r border-slate-800">PASSWORD ADMIN</th>
+                                <th class="p-2.5 border-r border-slate-800">PASSWORD ADMIN NEW</th>
+                                <th class="p-2.5 border-r border-slate-800">PASSWORD USER</th>
+                                <th class="p-2.5 border-r border-slate-800">PROCESADOR</th>
+                                <th class="p-2.5 border-r border-slate-800">RAM (GB)</th>
+                                <th class="p-2.5 border-r border-slate-800">SISTEMA OPERATIVO</th>
+                                <th class="p-2.5 border-r border-slate-800">OFFICE</th>
+                                <th class="p-2.5 border-r border-slate-800">TECLADO SERIAL</th>
+                                <th class="p-2.5 border-r border-slate-800">MOUSE SERIAL</th>
+                                <th class="p-2.5 border-r border-slate-800">ESTADO ACTIVO</th>
+                                <th class="p-2.5 border-r border-slate-800">ASIGNADO A (ID)</th>
+                                <th class="p-2.5 border-r border-slate-800">COLABORADOR</th>
+                                <th class="p-2.5 text-center">ACCIONES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaInventario" class="divide-y divide-slate-800/80 bg-slate-950/40">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: CONTROL DE TELÉFONOS -->
+        <section id="tab-telefonos" class="hidden space-y-6">
+            <div class="glass-card p-6 rounded-2xl border border-slate-800/90">
+                <h2 id="tituloFormTelefono" class="text-base sm:text-lg font-bold text-white mb-4 flex items-center gap-2.5 border-b border-slate-800 pb-3">
+                    <span class="w-8 h-8 rounded-xl brand-gradient flex items-center justify-center text-white text-sm">
+                        <i class="fa-solid fa-mobile-screen"></i>
+                    </span>
+                    Registrar / Modificar Teléfono
+                </h2>
+                <form id="formTelefono" onsubmit="guardarTelefono(event)" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3.5 text-xs">
+                    <input type="hidden" id="tel_id_internal">
+                    
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">NO. (CONSECUTIVO) *</label>
+                        <input type="text" id="tel_no" required placeholder="Ej. 1 / TEL-01" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">TELEFONO (LÍNEA) *</label>
+                        <input type="text" id="tel_linea" required placeholder="Ej. 5512345678" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">NOMBRE DEL EMPLEADO *</label>
+                        <input type="text" id="tel_empleado" required placeholder="Nombre Completo" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">PUESTO *</label>
+                        <input type="text" id="tel_puesto" required placeholder="Ej. Chofer / Supervisor" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">EQUIPO (MARCA / MODELO) *</label>
+                        <input type="text" id="tel_equipo" required placeholder="Ej. Samsung Galaxy A04" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">IMEI *</label>
+                        <input type="text" id="tel_imei" required placeholder="Ej. 864201048291038" class="w-full input-dark px-3 py-2 font-mono">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">EMPRESA ASIGNADA *</label>
+                        <select id="tel_empresa" required class="w-full input-dark px-3 py-2 font-semibold">
+                            <option value="PIBE">PIBE LOGISTIC</option>
+                            <option value="CLOC">CLOC LOGISTIC</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">PLAZA *</label>
+                        <select id="tel_plaza" required class="w-full input-dark px-3 py-2 font-semibold">
+                            <option value="">Seleccione Plaza...</option>
+                            <option value="CIUDAD DE MEXICO">CIUDAD DE MEXICO</option>
+                            <option value="MONTERREY">MONTERREY</option>
+                            <option value="VERACRUZ">VERACRUZ</option>
+                            <option value="GUADALAJARA">GUADALAJARA</option>
+                            <option value="SONORA">SONORA</option>
+                            <option value="TIJUANA">TIJUANA</option>
+                            <option value="VILLA HERMOSA">VILLA HERMOSA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">ESTADO ACTIVO *</label>
+                        <select id="tel_estado_activo" required class="w-full input-dark px-3 py-2 font-semibold">
+                            <option value="DISPONIBLE">DISPONIBLE</option>
+                            <option value="ASIGNADO" selected>ASIGNADO</option>
+                            <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+                            <option value="BAJA">BAJA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">PROYECTO</label>
+                        <input type="text" id="tel_proyecto" placeholder="Ej. OPERACIONES / LOGÍSTICA" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">OBSERVACIONES</label>
+                        <input type="text" id="tel_observaciones" placeholder="Ej. Con mica y funda" class="w-full input-dark px-3 py-2">
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block font-semibold text-slate-300 mb-1">COMENTARIOS</label>
+                        <input type="text" id="tel_comentarios" placeholder="Comentarios adicionales" class="w-full input-dark px-3 py-2">
+                    </div>
+
+                    <div class="lg:col-span-6 flex justify-end gap-2.5 mt-2 pt-3 border-t border-slate-800/80">
+                        <button type="button" onclick="cancelarEdicionTelefono()" id="btnCancelarTel" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs py-2.5 px-4 rounded-xl transition cursor-pointer">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="btnGuardarTel" class="brand-gradient brand-gradient-hover text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-save"></i> Guardar Teléfono
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="glass-card rounded-2xl border border-slate-800/90 overflow-hidden">
+                <div class="p-4 bg-slate-900/80 border-b border-slate-800 flex justify-between items-center flex-wrap gap-3">
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-sim-card text-[#52B043]"></i>
+                        Listado y Control de Teléfonos
+                    </h3>
+                    <div class="relative w-full sm:w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="buscarTelefono" onkeyup="renderizarTelefonos()" placeholder="Buscar línea, IMEI, empleado..." class="w-full input-dark pl-8 pr-3 py-1.5 text-xs">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                        <thead class="excel-green-header font-bold uppercase text-[11px] tracking-wide border-b border-emerald-700/60">
+                            <tr>
+                                <th class="p-2.5 border-r border-emerald-900/60">NO.</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">TELEFONO</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">NOMBRE DEL EMPLEADO</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">PUESTO</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">EQUIPO</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">IMEI</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">PLAZA</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">ESTADO ACTIVO</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">PROYECTO</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">OBSERVACIONES</th>
+                                <th class="p-2.5 border-r border-emerald-900/60">COMENTARIOS</th>
+                                <th class="p-2.5 text-center">ACCIONES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaTelefonos" class="divide-y divide-slate-800/80 bg-slate-950/40">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: RESPONSIVAS CÓMPUTO -->
+        <section id="tab-responsivas-computo" class="hidden space-y-6">
+            <div class="glass-card p-6 rounded-2xl border border-slate-800/90">
+                <h2 class="text-base sm:text-lg font-bold text-white mb-4 flex items-center gap-2.5 border-b border-slate-800 pb-3">
+                    <span class="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-laptop"></i>
+                    </span>
+                    Generar Responsiva de Equipo de Cómputo
+                </h2>
+                <form id="formResponsivaComputo" onsubmit="guardarResponsivaComputo(event)" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Nombre Completo del Colaborador *</label>
+                        <input type="text" id="resp_comp_colaborador" required placeholder="Ej. Karla Ivone López Cabello" class="w-full input-dark px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Cargo *</label>
+                        <input type="text" id="resp_comp_cargo" required placeholder="Ej. RECEPCION" class="w-full input-dark px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Usuario de Red</label>
+                        <input type="text" id="resp_comp_usuario_red" placeholder="Ej. GALAXY TAB A9+" class="w-full input-dark px-3.5 py-2.5 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Área *</label>
+                        <input type="text" id="resp_comp_area" required placeholder="Ej. RECEPCION" class="w-full input-dark px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Correo Electrónico Corporativo</label>
+                        <input type="text" id="resp_comp_correo" placeholder="Ej. klopez@pibelogistic.com.mx" class="w-full input-dark px-3.5 py-2.5 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Seleccionar Equipo Disponible *</label>
+                        <select id="resp_comp_equipo" required class="w-full input-dark px-3.5 py-2.5">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Empresa de la responsiva (define el logo) *</label>
+                        <select id="resp_comp_empresa" required class="w-full input-dark px-3.5 py-2.5 font-semibold">
+                            <option value="PIBE">PIBE LOGISTIC</option>
+                            <option value="CLOC">CLOC LOGISTIC</option>
+                        </select>
+                    </div>
+                    <div class="lg:col-span-3">
+                        <label class="block font-semibold text-slate-300 mb-1.5">Observaciones de Entrega</label>
+                        <input type="text" id="resp_comp_observaciones" placeholder="Ej. SE ENTREGA EQUIPO COMPLETO Y ALIMENTADOR DE ENERGIA" class="w-full input-dark px-3.5 py-2.5">
+                    </div>
+
+                    <div class="flex justify-end lg:col-span-3 pt-2 border-t border-slate-800/80">
+                        <button type="submit" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-check"></i> Generar Responsiva Cómputo
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="glass-card rounded-2xl border border-slate-800/90 overflow-hidden">
+                <div class="p-4 bg-slate-900/80 border-b border-slate-800">
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-sky-400"></i>
+                        Histórico de Responsivas de Cómputo
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-900/90 text-slate-300 font-semibold uppercase text-[11px] border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Folio</th>
+                                <th class="p-3">Colaborador</th>
+                                <th class="p-3">Plaza</th>
+                                <th class="p-3">Área / Cargo</th>
+                                <th class="p-3">Equipo Asignado</th>
+                                <th class="p-3">Fecha Emisión</th>
+                                <th class="p-3 text-center">Estatus de Firma</th>
+                                <th class="p-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaResponsivasComputo" class="divide-y divide-slate-800/80 bg-slate-950/40">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: RESPONSIVAS TELÉFONOS -->
+        <section id="tab-responsivas-telefonos" class="hidden space-y-6">
+            <div class="glass-card p-6 rounded-2xl border border-slate-800/90">
+                <h2 class="text-base sm:text-lg font-bold text-white mb-4 flex items-center gap-2.5 border-b border-slate-800 pb-3">
+                    <span class="w-8 h-8 rounded-xl brand-gradient flex items-center justify-center text-white text-sm">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                    </span>
+                    Generar Responsiva de Teléfono Móvil
+                </h2>
+                <form id="formResponsivaTelefono" onsubmit="guardarResponsivaTelefono(event)" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Nombre Completo del Colaborador *</label>
+                        <input type="text" id="resp_tel_colaborador" required placeholder="Ej. ALONDRA GIOVANA TEJADA HUERTA" class="w-full input-dark px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Cargo *</label>
+                        <input type="text" id="resp_tel_cargo" required placeholder="Ej. SUPERVISOR" class="w-full input-dark px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Área *</label>
+                        <input type="text" id="resp_tel_area" required placeholder="Ej. OPERACIONES" class="w-full input-dark px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Correo Electrónico Corporativo</label>
+                        <input type="text" id="resp_tel_correo" placeholder="Ej. atejada@pibelogistic.com" class="w-full input-dark px-3.5 py-2.5 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Seleccionar Teléfono Registrado *</label>
+                        <select id="resp_tel_equipo" required class="w-full input-dark px-3.5 py-2.5">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Empresa de la responsiva (define el logo) *</label>
+                        <select id="resp_tel_empresa" required class="w-full input-dark px-3.5 py-2.5 font-semibold">
+                            <option value="PIBE">PIBE LOGISTIC</option>
+                            <option value="CLOC">CLOC LOGISTIC</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1.5">Costo del Equipo ($) *</label>
+                        <input type="text" id="resp_tel_costo" required placeholder="Ej. $2,399.00" value="$2,399.00" class="w-full input-dark px-3.5 py-2.5 font-mono font-bold text-[#52B043]">
+                    </div>
+
+                    <!-- Checklist de Accesorios y Software -->
+                    <div class="lg:col-span-3 border-t border-slate-800 pt-3.5 mt-1">
+                        <label class="block font-bold text-[#52B043] mb-2.5">Accesorios y Software Entregado:</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="chk_chip" checked class="w-4 h-4 accent-[#52B043] rounded"> Chip / SIM
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="chk_cargador" class="w-4 h-4 accent-[#52B043] rounded"> Cargador
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="chk_cable" class="w-4 h-4 accent-[#52B043] rounded"> Cable de Energía
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="chk_funda" class="w-4 h-4 accent-[#52B043] rounded"> Funda
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="chk_configuracion" checked class="w-4 h-4 accent-[#52B043] rounded"> Configuración Inicial
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="chk_outlook" class="w-4 h-4 accent-[#52B043] rounded"> Outlook
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="chk_teams" class="w-4 h-4 accent-[#52B043] rounded"> Teams
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="chk_apps" checked class="w-4 h-4 accent-[#52B043] rounded"> Apps Corporativas
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-3">
+                        <label class="block font-semibold text-slate-300 mb-1.5">Observaciones de Entrega</label>
+                        <input type="text" id="resp_tel_observaciones" placeholder="Ej. SE ENTREGA EQUIPO EN BUENAS CONDICIONES" value="SE ENTREGA EQUIPO." class="w-full input-dark px-3.5 py-2.5">
+                    </div>
+
+                    <div class="flex justify-end lg:col-span-3 pt-2 border-t border-slate-800/80">
+                        <button type="submit" class="brand-gradient brand-gradient-hover text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-check"></i> Generar Responsiva Teléfono
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="glass-card rounded-2xl border border-slate-800/90 overflow-hidden">
+                <div class="p-4 bg-slate-900/80 border-b border-slate-800">
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-[#52B043]"></i>
+                        Histórico de Responsivas de Teléfonos
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-900/90 text-slate-300 font-semibold uppercase text-[11px] border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Folio</th>
+                                <th class="p-3">Colaborador</th>
+                                <th class="p-3">Plaza</th>
+                                <th class="p-3">Número / IMEI</th>
+                                <th class="p-3">Equipo</th>
+                                <th class="p-3">Fecha Emisión</th>
+                                <th class="p-3 text-center">Estatus de Firma</th>
+                                <th class="p-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaResponsivasTelefonos" class="divide-y divide-slate-800/80 bg-slate-950/40">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL LOGIN -->
+    <div id="modalLogin" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print">
+        <div class="glass-card w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
+            <div class="bg-slate-900/90 border-b border-slate-800 p-6 text-center relative">
+                <button onclick="cerrarModalLogin()" class="absolute right-4 top-4 w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer">✕</button>
+                <div class="w-12 h-12 brand-gradient text-white rounded-2xl flex items-center justify-center mx-auto text-xl mb-3 shadow-lg shadow-emerald-950/60">
+                    <i class="fa-solid fa-user-lock"></i>
+                </div>
+                <h3 class="font-extrabold text-lg text-white">Iniciar Sesión de Usuario</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Ingresa tus credenciales autorizadas</p>
+            </div>
+            <form onsubmit="iniciarSesion(event)" class="p-6 space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1.5">Nombre de Usuario</label>
+                    <input type="text" id="login_username" required placeholder="Ej. admin" class="w-full input-dark px-3.5 py-2.5 font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1.5">Contraseña</label>
+                    <input type="password" id="login_password" required placeholder="••••••••" class="w-full input-dark px-3.5 py-2.5 font-mono">
+                </div>
+                <button type="submit" class="w-full brand-gradient brand-gradient-hover text-white font-bold py-3 rounded-xl shadow-lg transition cursor-pointer">
+                    Ingresar al Sistema
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- FORMATO DE RESPONSIVA CÓMPUTO (Imprimible con Logo Oficial - Fondo Blanco) -->
+    <div id="vistaFormatoComputo" class="hidden print-only max-w-4xl mx-auto p-6 bg-white text-black font-sans text-xs border border-slate-300 my-6 rounded-lg shadow-2xl">
+        <div class="flex items-center justify-between border-b-2 border-green-700 pb-3 mb-4">
+            <div class="flex items-center gap-3">
+                <img id="vc_logo" src="../../imagenes/logos/Logos.png" alt="PIBE LOGISTIC" class="h-14 w-auto max-w-[180px] object-contain print:max-h-12 border-0 outline-none shadow-none">
+            </div>
+            <div class="text-center flex-1">
+                <h1 class="text-base font-extrabold pibe-green-text tracking-wide uppercase">FORMATO DE ASIGNACIÓN Y RESPONSIVA DE EQUIPO DE CÓMPUTO</h1>
+            </div>
+            <div class="text-right text-[10px] text-slate-600">
+                <p><strong>Folio:</strong> <span id="vc_folio"></span></p>
+                <p><strong>Fecha:</strong> <span id="vc_fecha"></span></p>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <div class="pibe-green-header font-bold text-center py-1 uppercase tracking-wider mb-1">
+                DATOS DEL COLABORADOR
+            </div>
+            <table class="w-full border-collapse border border-black text-xs">
+                <tr>
+                    <td class="border border-black p-1 bg-slate-100 font-bold w-1/6">Nombre:</td>
+                    <td id="vc_nombre" class="border border-black p-1 w-2/6"></td>
+                    <td class="border border-black p-1 bg-slate-100 font-bold w-1/6">Cargo:</td>
+                    <td id="vc_cargo" class="border border-black p-1 w-2/6"></td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-1 bg-slate-100 font-bold">Usuario de Red:</td>
+                    <td id="vc_usuario_red" class="border border-black p-1"></td>
+                    <td class="border border-black p-1 bg-slate-100 font-bold">Área:</td>
+                    <td id="vc_area" class="border border-black p-1"></td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-1 bg-slate-100 font-bold">Correo:</td>
+                    <td id="vc_correo" class="border border-black p-1"></td>
+                    <td class="border border-black p-1 bg-slate-100 font-bold">Plaza:</td>
+                    <td id="vc_plaza" class="border border-black p-1 font-bold"></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="mb-4">
+            <div class="pibe-green-header font-bold text-center py-1 uppercase tracking-wider mb-1">
+                ESPECIFICACIONES DE HARDWARE
+            </div>
+            <table class="w-full border-collapse border border-black text-center text-xs">
+                <tr class="pibe-green-header font-bold uppercase text-[10px]">
+                    <td class="border border-black p-1">TIPO</td>
+                    <td class="border border-black p-1">NOMBRE DE RED</td>
+                    <td class="border border-black p-1">MARCA</td>
+                    <td class="border border-black p-1">MODELO</td>
+                    <td class="border border-black p-1">SERIAL</td>
+                    <td class="border border-black p-1">PROCESADOR</td>
+                </tr>
+                <tr>
+                    <td id="vc_tipo" class="border border-black p-1"></td>
+                    <td id="vc_red" class="border border-black p-1"></td>
+                    <td id="vc_marca" class="border border-black p-1"></td>
+                    <td id="vc_modelo" class="border border-black p-1"></td>
+                    <td id="vc_serial" class="border border-black p-1"></td>
+                    <td id="vc_procesador" class="border border-black p-1"></td>
+                </tr>
+                <tr class="pibe-green-header font-bold uppercase text-[10px]">
+                    <td class="border border-black p-1">RAM (GB)</td>
+                    <td class="border border-black p-1">SISTEMA OPERATIVO</td>
+                    <td class="border border-black p-1">MONITOR</td>
+                    <td class="border border-black p-1">CARGADOR</td>
+                    <td class="border border-black p-1">TECLADO SERIAL</td>
+                    <td class="border border-black p-1">MOUSE SERIAL</td>
+                </tr>
+                <tr>
+                    <td id="vc_ram" class="border border-black p-1"></td>
+                    <td id="vc_so" class="border border-black p-1"></td>
+                    <td id="vc_monitor" class="border border-black p-1">NA</td>
+                    <td id="vc_cargador" class="border border-black p-1">SI</td>
+                    <td id="vc_teclado" class="border border-black p-1"></td>
+                    <td id="vc_mouse" class="border border-black p-1"></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="mb-4">
+            <div class="pibe-green-header font-bold text-center py-1 uppercase tracking-wider mb-1">
+                SOFTWARE CORPORATIVO INSTALADO
+            </div>
+            <table class="w-full border-collapse border border-black text-xs">
+                <tr>
+                    <td class="border border-black p-1 w-5/12">Microsoft Office Suite (Word, Excel, PPT)</td>
+                    <td class="border border-black p-1 text-center w-1/12"><input type="checkbox" checked disabled></td>
+                    <td class="border border-black p-1 w-5/12">Adobe Acrobat Reader</td>
+                    <td class="border border-black p-1 text-center w-1/12"><input type="checkbox" checked disabled></td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-1">Antivirus Corporativo Defender</td>
+                    <td class="border border-black p-1 text-center"><input type="checkbox" checked disabled></td>
+                    <td class="border border-black p-1">Cisco AnyConnect VPN</td>
+                    <td class="border border-black p-1 text-center"><input type="checkbox" disabled></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="mb-4">
+            <div class="pibe-green-header font-bold text-center py-1 uppercase tracking-wider mb-1">OBSERVACIONES</div>
+            <div id="vc_observaciones" class="border border-black p-2 min-h-[40px] text-xs font-semibold"></div>
+        </div>
+
+        <div class="mb-6 border border-black p-2 text-[9px] italic leading-tight text-slate-700 text-justify">
+            <p class="font-bold text-center not-italic uppercase mb-1">TÉRMINOS, CONDICIONES Y RESPONSABILIDAD</p>
+            Certifico que los elementos detallados en el presente documento me han sido entregados para mi cuidado y custodia con el propósito de cumplir con las tareas y asignaciones propias de mi cargo en la empresa, siendo estos de mi única y exclusiva responsabilidad. Me comprometo a usar correctamente los recursos, y solo para los fines establecidos, a no instalar ni permitir la instalación de software por personal ajeno al grupo interno de trabajo de soporte de DSSI. De igual manera me obligo a reportar de inmediato cualquier daño o extravío del activo asignado, haciéndose responsable del costo del equipo por daño o extravío del componente entregado.
+        </div>
+
+        <div class="grid grid-cols-2 gap-8 text-center pt-8 border-t border-black">
+            <div>
+                <p class="font-bold text-xs uppercase mb-8">ENTREGA DE EQUIPO</p>
+                <div class="border-t border-black pt-1">
+                    <p class="font-bold text-xs">ING. AARON URIEL LANDEROS ROA</p>
+                    <p class="text-[10px] text-slate-500">Área: SISTEMAS</p>
+                </div>
+            </div>
+            <div>
+                <p class="font-bold text-xs uppercase mb-8">RECIBE DE CONFORMIDAD</p>
+                <div class="border-t border-black pt-1">
+                    <p id="vc_firma_nombre" class="font-bold text-xs uppercase"></p>
+                    <p class="text-[10px] text-slate-500">Nombre y Firma / Fecha: __________________</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center no-print flex justify-center gap-4">
+            <button onclick="window.print()" class="brand-gradient brand-gradient-hover text-white px-5 py-2.5 rounded-xl text-xs font-sans font-bold flex items-center gap-2 shadow-lg cursor-pointer">
+                <i class="fa-solid fa-print"></i> Imprimir / Guardar PDF
+            </button>
+            <button onclick="cerrarVistaFormato()" class="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl text-xs font-sans font-bold shadow cursor-pointer">
+                Volver al Panel
+            </button>
+        </div>
+    </div>
+
+    <!-- FORMATO DE RESPONSIVA TELÉFONO (Compacto para 1 hoja Carta - Fondo Blanco) -->
+    <div id="vistaFormatoTelefono" class="hidden print-only max-w-4xl mx-auto p-4 bg-white text-black font-sans text-[11px] border border-slate-300 my-6 rounded-lg shadow-2xl">
+        <!-- ENCABEZADO -->
+        <div class="flex items-center justify-between border-b-2 border-green-700 pb-2 mb-2">
+            <div class="flex items-center gap-3">
+                <img id="vt_logo" src="../../imagenes/logos/Logos.png" alt="PIBE LOGISTIC" class="h-12 w-auto max-w-[160px] object-contain print:max-h-10 border-0 outline-none shadow-none">
+            </div>
+            <div class="text-center flex-1">
+                <h1 class="text-sm font-extrabold pibe-green-text tracking-wide uppercase">FORMATO DE ASIGNACIÓN Y RESPONSIVA DE TELÉFONO MÓVIL</h1>
+            </div>
+            <div class="text-right text-[9px] text-slate-600">
+                <p><strong>Folio:</strong> <span id="vt_folio"></span></p>
+                <p><strong>Fecha:</strong> <span id="vt_fecha"></span></p>
+            </div>
+        </div>
+
+        <!-- DATOS DEL COLABORADOR -->
+        <div class="mb-2">
+            <div class="pibe-green-header font-bold text-center py-0.5 text-[10px] uppercase tracking-wider mb-1">
+                DATOS DEL COLABORADOR
+            </div>
+            <table class="w-full border-collapse border border-black text-[10px]">
+                <tr>
+                    <td class="border border-black p-1 bg-slate-100 font-bold w-1/6">Nombre:</td>
+                    <td id="vt_nombre" class="border border-black p-1 font-bold w-2/6"></td>
+                    <td class="border border-black p-1 bg-slate-100 font-bold w-1/6">Cargo:</td>
+                    <td id="vt_cargo" class="border border-black p-1 w-2/6"></td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-1 bg-slate-100 font-bold w-1/6">Número:</td>
+                    <td id="vt_numero" class="border border-black p-1 font-bold text-emerald-800 w-2/6"></td>
+                    <td class="border border-black p-1 bg-slate-100 font-bold w-1/6">Correo:</td>
+                    <td id="vt_correo" class="border border-black p-1 w-2/6"></td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-1 bg-slate-100 font-bold w-1/6">Área:</td>
+                    <td id="vt_area" class="border border-black p-1 w-2/6"></td>
+                    <td class="border border-black p-1 bg-slate-100 font-bold w-1/6">Plaza:</td>
+                    <td id="vt_plaza" class="border border-black p-1 font-bold w-2/6"></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- HARDWARE -->
+        <div class="mb-2">
+            <div class="pibe-green-header font-bold text-center py-0.5 text-[10px] uppercase tracking-wider mb-1">
+                HARDWARE
+            </div>
+            <table class="w-full border-collapse border border-black text-center text-[10px]">
+                <tr class="pibe-green-header font-bold uppercase text-[9px]">
+                    <td class="border border-black p-0.5">TIPO</td>
+                    <td class="border border-black p-0.5">OPERADOR</td>
+                    <td class="border border-black p-0.5">MARCA</td>
+                    <td class="border border-black p-0.5">MODELO</td>
+                    <td class="border border-black p-0.5">IMEI</td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-0.5 font-bold">CELULAR</td>
+                    <td id="vt_operador" class="border border-black p-0.5">AT&T</td>
+                    <td id="vt_marca" class="border border-black p-0.5 font-bold"></td>
+                    <td id="vt_modelo" class="border border-black p-0.5"></td>
+                    <td id="vt_imei" class="border border-black p-0.5 font-mono font-bold"></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- SOFTWARE Y ACCESORIOS -->
+        <div class="mb-2">
+            <div class="pibe-green-header font-bold text-center py-0.5 text-[10px] uppercase tracking-wider mb-1">
+                SOFTWARE Y ACCESORIOS
+            </div>
+            <table class="w-full border-collapse border border-black text-[10px]">
+                <tr class="pibe-green-header font-bold uppercase text-[9px] text-center">
+                    <td class="border border-black p-0.5 w-1/3" colspan="2">ACCESORIOS</td>
+                    <td class="border border-black p-0.5 w-1/3" colspan="2">SOFTWARE ESPECIAL SOLICITADO</td>
+                    <td class="border border-black p-0.5 w-1/3">COSTO DEL EQUIPO</td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-0.5">Chip / Sim</td>
+                    <td id="vt_chk_chip" class="border border-black p-0.5 text-center font-bold">☐</td>
+                    <td class="border border-black p-0.5">Outlook</td>
+                    <td id="vt_chk_outlook" class="border border-black p-0.5 text-center font-bold">☐</td>
+                    <td id="vt_costo" class="border border-black p-1 text-center font-bold text-xs text-slate-800" rowspan="5"></td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-0.5">Cable de Energía</td>
+                    <td id="vt_chk_cable" class="border border-black p-0.5 text-center font-bold">☐</td>
+                    <td class="border border-black p-0.5">Teams</td>
+                    <td id="vt_chk_teams" class="border border-black p-0.5 text-center font-bold">☐</td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-0.5">Cargador</td>
+                    <td id="vt_chk_cargador" class="border border-black p-0.5 text-center font-bold">☐</td>
+                    <td class="border border-black p-0.5">VPN</td>
+                    <td id="vt_chk_vpn" class="border border-black p-0.5 text-center font-bold">☐</td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-0.5">Funda</td>
+                    <td id="vt_chk_funda" class="border border-black p-0.5 text-center font-bold">☐</td>
+                    <td class="border border-black p-0.5">Correo Corporativo</td>
+                    <td id="vt_chk_correo" class="border border-black p-0.5 text-center font-bold">☒</td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-0.5">Configuración</td>
+                    <td id="vt_chk_configuracion" class="border border-black p-0.5 text-center font-bold">☒</td>
+                    <td class="border border-black p-0.5">Aplicaciones Corporativas</td>
+                    <td id="vt_chk_apps" class="border border-black p-0.5 text-center font-bold">☒</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- OBSERVACIONES -->
+        <div class="mb-2">
+            <div class="pibe-green-header font-bold text-center py-0.5 text-[10px] uppercase tracking-wider mb-0.5">
+                OBSERVACIONES
+            </div>
+            <div id="vt_observaciones" class="border border-black p-1 text-[10px] font-semibold text-center">
+                SE ENTREGA EQUIPO.
+            </div>
+        </div>
+
+        <!-- LINKS DE SOPORTE -->
+        <div class="grid grid-cols-3 gap-1 text-center text-[8px] mb-2">
+            <div class="border border-black p-0.5 bg-slate-50">
+                <p class="font-bold">Solicitud SOPORTE</p>
+                <p class="text-blue-600 underline">https://forms.gle/wBG3h2zKrYAiUh3n7</p>
+            </div>
+            <div class="border border-black p-0.5 bg-slate-50">
+                <p class="font-bold">Solicitud SOFTWARE</p>
+                <p class="text-blue-600 underline">https://forms.gle/K873LezTDnrEW52WA</p>
+            </div>
+            <div class="border border-black p-0.5 bg-slate-50">
+                <p class="font-bold">Solicitud ACCESOS</p>
+                <p class="text-blue-600 underline">https://forms.gle/F4Bnn4NgLT8vz1yz7</p>
+            </div>
+        </div>
+
+        <!-- TÉRMINOS Y CONDICIONES -->
+        <div class="mb-3 border border-black p-1 text-[8px] italic leading-tight text-slate-700 text-justify">
+            Certifico que los elementos detallados en el presente documento me han sido entregados para mi cuidado y custodia con el propósito de cumplir con las tareas y asignaciones propias de mi cargo en la empresa, siendo estos de mi única y exclusiva responsabilidad. Me comprometo a usar correctamente los recursos, y solo para los fines establecidos, a no instalar ni permitir la instalación de software por personal ajeno al grupo interno de trabajo de soporte de DSSI. De igual manera me obligo a reportar de inmediato cualquier daño o extravío del activo asignado, haciéndose responsable del costo del equipo por daño o extravío del componente entregado.
+        </div>
+
+        <!-- FIRMAS -->
+        <div class="border border-black p-2 mb-2">
+            <p class="font-bold text-center text-[10px] uppercase mb-2">ENTREGA DE EQUIPO</p>
+            <div class="grid grid-cols-2 gap-6 text-center">
+                <div>
+                    <p class="font-bold text-[10px] uppercase mb-4">RECIBE</p>
+                    <div class="border-t border-black pt-0.5">
+                        <p id="vt_firma_recibe_nombre" class="font-bold text-[10px] uppercase"></p>
+                        <p class="text-[8px] text-slate-500">Nombre, Firma y Fecha</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="font-bold text-[10px] uppercase mb-4">ENTREGA</p>
+                    <div class="border-t border-black pt-0.5">
+                        <p class="font-bold text-[10px]">ING. AARON URIEL LANDEROS ROA</p>
+                        <p class="text-[8px] text-slate-500">Área: SISTEMAS</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="border border-black p-1 text-[9px]">
+            <p class="font-bold uppercase">OBSERVACIONES DEL COLABORADOR:</p>
+            <br><br><br><br>
+            <p class="text-slate-400 mt-0.5 mb-2">NOMBRE COMPLETO Y FIRMA</p>
+        </div>
+
+        <!-- BOTONES VISTA PREVIA -->
+        <div class="mt-4 text-center no-print flex justify-center gap-4">
+            <button onclick="window.print()" class="brand-gradient brand-gradient-hover text-white px-5 py-2.5 rounded-xl text-xs font-sans font-bold flex items-center gap-2 shadow-lg cursor-pointer">
+                <i class="fa-solid fa-print"></i> Imprimir / Guardar PDF
+            </button>
+            <button onclick="cerrarVistaFormato()" class="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl text-xs font-sans font-bold shadow cursor-pointer">
+                Volver al Panel
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL VISUALIZADOR DE PDF -->
+    <div id="modalPdf" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print">
+        <div class="glass-card w-full max-w-4xl h-[85vh] rounded-2xl border border-slate-700 flex flex-col overflow-hidden shadow-2xl">
+            <div class="bg-slate-900 border-b border-slate-800 text-white p-3.5 flex justify-between items-center">
+                <h3 class="font-bold text-sm flex items-center gap-2"><i class="fa-solid fa-file-pdf text-rose-400"></i> Visualizador de Responsiva Firmada (PDF)</h3>
+                <button onclick="cerrarModalPdf()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 font-bold transition cursor-pointer">✕</button>
+            </div>
+            <iframe id="iframePdf" class="w-full flex-1 border-none bg-white"></iframe>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const STORAGE_KEY = 'PIBE_SYSTEM_DB_V14';
+
+        const MAPA_PLAZAS = {
+            'CIUDAD DE MEXICO': 'CDMX',
+            'MONTERREY': 'MTY',
+            'VERACRUZ': 'VER',
+            'GUADALAJARA': 'GDL',
+            'SONORA': 'SON',
+            'TIJUANA': 'TIJ',
+            'VILLA HERMOSA': 'VSA'
+        };
+
+        function obtenerAbreviatura(plaza) {
+            if (!plaza) return 'N/A';
+            const plazaUpper = plaza.trim().toUpperCase();
+            return MAPA_PLAZAS[plazaUpper] || plazaUpper;
+        }
+
+        let usuarioActual = null;
+
+        let db = {
+            usuarios: [
+                {
+                    id: 1,
+                    nombre: "Administrador del Sistema",
+                    username: "admin",
+                    password: "admin123",
+                    rol: "ADMIN",
+                    permisos: {
+                        dashboard: true,
+                        computo: true,
+                        telefonos: true,
+                        resp_computo: true,
+                        resp_telefonos: true
+                    }
+                }
+            ],
+            inventario: [],
+            telefonos: [],
+            responsivasComputo: [],
+            responsivasTelefonos: []
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            cargarDB();
+            aplicarPermisosVista();
+            renderizarDashboard();
+            renderizarInventario();
+            renderizarTelefonos();
+            renderizarResponsivasComputo();
+            renderizarResponsivasTelefonos();
+            renderizarUsuarios();
+            actualizarSelectEquiposComputo();
+            actualizarSelectEquiposTelefonos();
+            cancelarEdicionUsuario();
+        });
+
+
+
+        // --- PERMISOS POR ACCIÓN (qué puede hacer cada usuario en cada área) ---
+        const MSG_SIN_PERMISO = 'No tienes permiso para realizar esta acción.';
+        const ACCIONES_POR_AREA = {
+            computo: ['editar', 'eliminar', 'exportar', 'importar'],
+            telefonos: ['editar', 'eliminar', 'exportar', 'importar'],
+            resp_computo: ['editar'],
+            resp_telefonos: ['editar']
+        };
+
+        // ¿El usuario activo puede hacer 'accion' en 'area'?  (el ADMIN siempre; usuarios sin acciones guardadas conservan acceso total en sus áreas)
+        function puede(area, accion) {
+            if (!usuarioActual) return false;
+            if (usuarioActual.rol === 'ADMIN') return true;
+            if (!(usuarioActual.permisos || {})[area]) return false;
+            if (!usuarioActual.acciones) return true;
+            const a = usuarioActual.acciones[area];
+            return !!(a && a[accion]);
+        }
+
+        function aplicarAcciones() {
+            ['computo', 'telefonos', 'resp_computo', 'resp_telefonos'].forEach(a => {
+                document.body.classList.toggle('sin-editar-' + a, !puede(a, 'editar'));
+                document.body.classList.toggle('sin-eliminar-' + a, !puede(a, 'eliminar'));
+            });
+            [['formActivo', 'computo'], ['formTelefono', 'telefonos'], ['formResponsivaComputo', 'resp_computo'], ['formResponsivaTelefono', 'resp_telefonos']].forEach(([id, area]) => {
+                const f = document.getElementById(id), card = f && f.closest('.glass-card');
+                if (card) card.classList.toggle('hidden', !puede(area, 'editar'));
+            });
+            const mostrar = (sel, ok) => {
+                const el = document.querySelector(sel);
+                if (!el) return false;
+                (el.closest('label') || el).classList.toggle('hidden', !ok);
+                return ok;
+            };
+            const visibles = [
+                mostrar('[onclick="exportarExcelComputo()"]', puede('computo', 'exportar')),
+                mostrar('[onclick="exportarExcelTelefonos()"]', puede('telefonos', 'exportar')),
+                mostrar('[onclick="exportarExcelGeneral()"]', puede('computo', 'exportar') && puede('telefonos', 'exportar')),
+                mostrar(`input[onchange*="'computo'"]`, puede('computo', 'importar')),
+                mostrar(`input[onchange*="'telefonos'"]`, puede('telefonos', 'importar')),
+                mostrar('input[onchange="importarExcelAuto(event)"]', puede('computo', 'importar') && puede('telefonos', 'importar'))
+            ];
+            const seccion = document.getElementById('seccionExcelOps');
+            if (seccion) seccion.classList.toggle('hidden', !usuarioActual || !visibles.some(Boolean));
+        }
+
+        function leerAcciones(esAdmin) {
+            const out = {};
+            Object.keys(ACCIONES_POR_AREA).forEach(area => {
+                out[area] = {};
+                ACCIONES_POR_AREA[area].forEach(acc => {
+                    const cb = document.getElementById(`act_${area}_${acc}`);
+                    out[area][acc] = esAdmin || !!(cb && cb.checked);
+                });
+            });
+            return out;
+        }
+
+        // acciones = null → usuario antiguo sin acciones guardadas: se muestran todas marcadas (su acceso actual)
+        function cargarAccionesForm(acciones) {
+            Object.keys(ACCIONES_POR_AREA).forEach(area => {
+                ACCIONES_POR_AREA[area].forEach(acc => {
+                    const cb = document.getElementById(`act_${area}_${acc}`);
+                    if (cb) cb.checked = acciones ? !!(acciones[area] && acciones[area][acc]) : true;
+                });
+            });
+        }
+
+        function marcarAcciones(valor) {
+            Object.keys(ACCIONES_POR_AREA).forEach(area => ACCIONES_POR_AREA[area].forEach(acc => {
+                const cb = document.getElementById(`act_${area}_${acc}`);
+                if (cb && !cb.disabled) cb.checked = valor;
+            }));
+        }
+
+        function resumenAcc(usr, area) {
+            if (!usr.acciones) return ' · todo';
+            const a = usr.acciones[area] || {};
+            const nombres = { editar: 'editar', eliminar: 'eliminar', exportar: 'exportar', importar: 'importar' };
+            const lista = (ACCIONES_POR_AREA[area] || []).filter(k => a[k]).map(k => nombres[k]);
+            return ' · ' + (lista.length ? lista.join('/') : 'solo ver');
+        }
+
+        // --- EMPRESAS (PIBE LOGISTIC / CLOC LOGISTIC) ---
+        const EMPRESAS = {
+            PIBE: { nombre: 'PIBE LOGISTIC', logo: '../../imagenes/logos/Logos.png', dominio: 'pibelogistic.com', clase: 'bg-emerald-500/15 text-[#52B043] border-emerald-500/35' },
+            CLOC: { nombre: 'CLOC LOGISTIC', logo: '../../imagenes/logos/Logo_Cloc.png', dominio: 'cloclogistic.com', clase: 'bg-red-500/15 text-red-300 border-red-500/40' }
+        };
+        function empresaDe(e) { return EMPRESAS[e] ? e : 'PIBE'; }
+        function empresaDesdeTexto(t) { return /cloc/i.test(String(t || '')) ? 'CLOC' : 'PIBE'; }
+        function dominioEmpresa(e) { return EMPRESAS[empresaDe(e)].dominio; }
+        function badgeEmpresa(e) {
+            const k = empresaDe(e);
+            return `<span class="block mt-1 mx-auto w-fit px-1.5 py-0.5 rounded border text-[9px] font-bold tracking-wide ${EMPRESAS[k].clase}">${k}</span>`;
+        }
+        // Cambia el logo y el color del formato de responsiva según la empresa
+        function aplicarMarcaFormato(contenedorId, empresa) {
+            const k = empresaDe(empresa), cont = document.getElementById(contenedorId);
+            const logo = document.getElementById(contenedorId === 'vistaFormatoComputo' ? 'vc_logo' : 'vt_logo');
+            cont.classList.toggle('tema-cloc', k === 'CLOC');
+            if (logo) { logo.src = EMPRESAS[k].logo; logo.alt = EMPRESAS[k].nombre; }
+        }
+        // Al elegir un equipo, la empresa de la responsiva se rellena con la del equipo (se puede cambiar)
+        function sincronizarEmpresaResp(selectId, empresaId, lista) {
+            const sel = document.getElementById(selectId), emp = document.getElementById(empresaId);
+            const item = db[lista].find(x => x.id === parseInt(sel.value));
+            emp.value = empresaDe(item && item.empresa);
+        }
+        [['resp_comp_equipo', 'resp_comp_empresa', 'inventario'], ['resp_tel_equipo', 'resp_tel_empresa', 'telefonos']].forEach(([sel, emp, lista]) => {
+            const el = document.getElementById(sel);
+            const sync = () => sincronizarEmpresaResp(sel, emp, lista);
+            el.addEventListener('change', sync);
+            new MutationObserver(sync).observe(el, { childList: true });
+        });
+
+        // --- SEGURIDAD DE CONTRASEÑAS ---
+        // La contraseña del ADMIN se guarda cifrada (SHA-256): nadie puede leerla, ni en pantalla, ni en el respaldo, ni en el navegador.
+        // Las contraseñas de los usuarios normales se guardan legibles para que el ADMIN pueda consultarlas.
+        function sha256Hex(str) {
+            const K = [], H = [];
+            for (let p = 2, n = 0; n < 64; p++) {
+                let primo = true;
+                for (let i = 2; i * i <= p; i++) if (p % i === 0) { primo = false; break; }
+                if (primo) { if (n < 8) H[n] = (Math.pow(p, 0.5) % 1 * 4294967296) | 0; K[n++] = (Math.pow(p, 1 / 3) % 1 * 4294967296) | 0; }
+            }
+            const rr = (v, a) => (v >>> a) | (v << (32 - a));
+            const s = unescape(encodeURIComponent(str)), l = s.length, w = [];
+            for (let i = 0; i < l; i++) w[i >> 2] = (w[i >> 2] | 0) | (s.charCodeAt(i) << (24 - (i % 4) * 8));
+            w[l >> 2] = (w[l >> 2] | 0) | (0x80 << (24 - (l % 4) * 8));
+            w[(((l + 8) >> 6) + 1) * 16 - 1] = l * 8;
+            let h = H.slice(0, 8);
+            for (let j = 0; j < w.length; j += 16) {
+                const x = [];
+                for (let i = 0; i < 16; i++) x[i] = w[j + i] | 0;
+                for (let i = 16; i < 64; i++) {
+                    const s0 = rr(x[i - 15], 7) ^ rr(x[i - 15], 18) ^ (x[i - 15] >>> 3);
+                    const s1 = rr(x[i - 2], 17) ^ rr(x[i - 2], 19) ^ (x[i - 2] >>> 10);
+                    x[i] = (x[i - 16] + s0 + x[i - 7] + s1) | 0;
+                }
+                let [a, b, c, d, e, f, g, hh] = h;
+                for (let i = 0; i < 64; i++) {
+                    const t1 = (hh + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + x[i]) | 0;
+                    const t2 = ((rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+                    hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+                }
+                h = [h[0] + a | 0, h[1] + b | 0, h[2] + c | 0, h[3] + d | 0, h[4] + e | 0, h[5] + f | 0, h[6] + g | 0, h[7] + hh | 0];
+            }
+            return h.map(v => ('00000000' + (v >>> 0).toString(16)).slice(-8)).join('');
+        }
+
+        function cifrarPassword(pass) { return 'sha256$' + sha256Hex('PIBE::' + pass); }
+        function estaCifrada(pass) { return typeof pass === 'string' && pass.startsWith('sha256$'); }
+
+        function verificarPassword(usr, passIngresada) {
+            if (usr.rol === 'ADMIN') {
+                return estaCifrada(usr.password) ? usr.password === cifrarPassword(passIngresada) : usr.password === passIngresada;
+            }
+            return usr.password === passIngresada;
+        }
+
+        function migrarPasswordsAdmin() {
+            let cambio = false;
+            db.usuarios.forEach(u => {
+                if (u.rol === 'ADMIN' && !estaCifrada(u.password)) { u.password = cifrarPassword(u.password); cambio = true; }
+            });
+            if (cambio) localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+        }
+
+        function cambiarPasswordAdmin() {
+            if (!usuarioActual || usuarioActual.rol !== 'ADMIN') return alert('Acceso denegado.');
+            const actual = prompt('Contraseña actual del administrador:');
+            if (actual === null) return;
+            if (!verificarPassword(usuarioActual, actual.trim())) return alert('La contraseña actual es incorrecta.');
+            const nueva = prompt('Nueva contraseña del administrador (mínimo 6 caracteres):');
+            if (nueva === null) return;
+            if (nueva.trim().length < 6) return alert('La contraseña debe tener al menos 6 caracteres.');
+            usuarioActual.password = cifrarPassword(nueva.trim());
+            guardarDB();
+            alert('Contraseña del administrador actualizada. Queda cifrada y nadie puede verla.');
+        }
+
+        function marcarPermisos(valor) {
+            ['perm_dashboard', 'perm_computo', 'perm_telefonos', 'perm_resp_computo', 'perm_resp_telefonos']
+                .forEach(id => { document.getElementById(id).checked = valor; });
+        }
+
+        function alternarPassword(id) {
+            const span = document.getElementById('pw_' + id);
+            const usr = db.usuarios.find(u => u.id === id);
+            if (!span || !usr || !usuarioActual || usuarioActual.rol !== 'ADMIN') return;
+            const oculta = span.dataset.visible !== '1';
+            span.textContent = oculta ? usr.password : '••••••••';
+            span.dataset.visible = oculta ? '1' : '0';
+        }
+
+        function cargarDB() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                try {
+                    db = JSON.parse(data);
+                    if (!db.usuarios || db.usuarios.length === 0) {
+                        db.usuarios = [{
+                            id: 1,
+                            nombre: "Administrador del Sistema",
+                            username: "admin",
+                            password: "admin123",
+                            rol: "ADMIN",
+                            permisos: { dashboard: true, computo: true, telefonos: true, resp_computo: true, resp_telefonos: true }
+                        }];
+                    }
+                } catch (e) {
+                    console.error("Error al cargar BD", e);
+                }
+            } else {
+                guardarDB();
+            }
+
+            migrarPasswordsAdmin();
+
+            const sesion = sessionStorage.getItem('PIBE_SESION_ACTIVA');
+            if (sesion) {
+                let idSesion = sesion;
+                try { const o = JSON.parse(sesion); idSesion = (o && typeof o === 'object') ? o.id : o; } catch (e) {}
+                usuarioActual = db.usuarios.find(u => String(u.id) === String(idSesion)) || null;
+            }
+        }
+
+        function guardarDB() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+            renderizarDashboard();
+            renderizarInventario();
+            renderizarTelefonos();
+            renderizarResponsivasComputo();
+            renderizarResponsivasTelefonos();
+            renderizarUsuarios();
+            actualizarSelectEquiposComputo();
+            actualizarSelectEquiposTelefonos();
+        }
+
+        // --- AUTENTICACIÓN Y ROLES ---
+        function abrirModalLogin() {
+            document.getElementById('modalLogin').classList.remove('hidden');
+        }
+
+        function cerrarModalLogin() {
+            document.getElementById('modalLogin').classList.add('hidden');
+        }
+
+        function iniciarSesion(e) {
+            e.preventDefault();
+            const userIn = document.getElementById('login_username').value.trim();
+            const passIn = document.getElementById('login_password').value.trim();
+
+            const usr = db.usuarios.find(u => u.username.toLowerCase() === userIn.toLowerCase() && verificarPassword(u, passIn));
+
+            if (usr) {
+                usuarioActual = usr;
+                sessionStorage.setItem('PIBE_SESION_ACTIVA', String(usr.id));
+                cerrarModalLogin();
+                aplicarPermisosVista();
+                alert(`¡Bienvenido ${usr.nombre}!`);
+            } else {
+                alert('Usuario o contraseña incorrectos.');
+            }
+        }
+
+        function cerrarSesion() {
+            usuarioActual = null;
+            sessionStorage.removeItem('PIBE_SESION_ACTIVA');
+            aplicarPermisosVista();
+            alert('Sesión cerrada.');
+        }
+
+        function aplicarPermisosVista() {
+            const txtUser = document.getElementById('txtUsuarioActivo');
+            const txtRol = document.getElementById('txtRolActivo');
+            const btnAuth = document.getElementById('btnAuthAction');
+
+            const btnDash = document.getElementById('btn-tab-dashboard');
+            const btnComp = document.getElementById('btn-tab-inventario');
+            const btnTel = document.getElementById('btn-tab-telefonos');
+            const btnRespComp = document.getElementById('btn-tab-responsivas-computo');
+            const btnRespTel = document.getElementById('btn-tab-responsivas-telefonos');
+            const btnAdmin = document.getElementById('btn-tab-admin-users');
+
+            const seccionExcel = document.getElementById('seccionExcelOps');
+
+            [btnDash, btnComp, btnTel, btnRespComp, btnRespTel, btnAdmin].forEach(b => b && b.classList.add('hidden'));
+
+            if (!usuarioActual) {
+                txtUser.textContent = "Invitado";
+                txtRol.textContent = "Sin autenticar";
+                btnAuth.innerHTML = `<i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión`;
+                btnAuth.onclick = abrirModalLogin;
+                btnAuth.className = "brand-gradient brand-gradient-hover text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer";
+                
+                if (seccionExcel) seccionExcel.classList.add('hidden');
+                document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+                return;
+            }
+
+            txtUser.textContent = usuarioActual.nombre;
+            txtRol.textContent = usuarioActual.rol === 'ADMIN' ? 'Administrador' : 'Usuario Estándar';
+
+            btnAuth.innerHTML = `<i class="fa-solid fa-right-from-bracket"></i> Salir`;
+            btnAuth.onclick = cerrarSesion;
+            btnAuth.className = "bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700/50 text-xs font-bold px-3.5 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer";
+
+            aplicarAcciones();
+
+            if (usuarioActual.rol === 'ADMIN') {
+                [btnDash, btnComp, btnTel, btnRespComp, btnRespTel, btnAdmin].forEach(b => b && b.classList.remove('hidden'));
+                cambiarTab(tabDesdeHash() || 'tab-dashboard');
+                return;
+            }
+
+            const p = usuarioActual.permisos || {};
+            const tieneDash = Boolean(p.dashboard);
+            const tieneComp = Boolean(p.computo);
+            const tieneTel = Boolean(p.telefonos);
+            const tieneRespComp = Boolean(p.resp_computo);
+            const tieneRespTel = Boolean(p.resp_telefonos);
+
+            if (tieneDash) btnDash.classList.remove('hidden');
+            if (tieneComp) btnComp.classList.remove('hidden');
+            if (tieneTel) btnTel.classList.remove('hidden');
+            if (tieneRespComp) btnRespComp.classList.remove('hidden');
+            if (tieneRespTel) btnRespTel.classList.remove('hidden');
+
+            if (tieneDash) cambiarTab('tab-dashboard');
+            else if (tieneTel) cambiarTab('tab-telefonos');
+            else if (tieneRespTel) cambiarTab('tab-responsivas-telefonos');
+            else if (tieneComp) cambiarTab('tab-inventario');
+            else if (tieneRespComp) cambiarTab('tab-responsivas-computo');
+            else {
+                document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+                alert('Este usuario no tiene módulos autorizados.');
+            }
+
+            const tabPedida = tabDesdeHash();
+            if (tabPedida) cambiarTab(tabPedida); // cambiarTab rechaza las áreas sin permiso
+        }
+
+        // Permite abrir un área directo desde el inicio: inventario.html#computo | #telefonos | #resp-computo | #resp-telefonos | #dashboard
+        function tabDesdeHash() {
+            const mapa = { 'dashboard': 'tab-dashboard', 'computo': 'tab-inventario', 'telefonos': 'tab-telefonos', 'resp-computo': 'tab-responsivas-computo', 'resp-telefonos': 'tab-responsivas-telefonos' };
+            return mapa[(location.hash || '').replace('#', '')] || null;
+        }
+        window.addEventListener('hashchange', () => { if (usuarioActual) { const t = tabDesdeHash(); if (t) cambiarTab(t); } });
+
+        // --- GESTIÓN DE USUARIOS (SOLO ADMIN) ---
+        function guardarUsuario(e) {
+            e.preventDefault();
+            if (!usuarioActual || usuarioActual.rol !== 'ADMIN') return alert('Acceso denegado.');
+
+            const editId = document.getElementById('usr_id_internal').value;
+            const previo = editId ? db.usuarios.find(u => u.id === parseInt(editId)) : null;
+            if (editId && !previo) return;
+
+            const rol = document.getElementById('usr_rol').value === 'ADMIN' ? 'ADMIN' : 'USUARIO';
+            const esAdmin = rol === 'ADMIN';
+            const username = document.getElementById('usr_username').value.trim();
+
+            if (previo && previo.username === 'admin' && (!esAdmin || username.toLowerCase() !== 'admin')) {
+                return alert('La cuenta principal "admin" no puede cambiar de rol ni de nombre de usuario.');
+            }
+            if (previo && previo.id === usuarioActual.id && !esAdmin) {
+                return alert('No puedes quitarte a ti mismo el rol de administrador.');
+            }
+
+            const ids = ['perm_dashboard', 'perm_computo', 'perm_telefonos', 'perm_resp_computo', 'perm_resp_telefonos'];
+            if (!esAdmin && !ids.some(id => document.getElementById(id).checked)) {
+                return alert('Marca al menos un área que este usuario podrá ver.');
+            }
+
+            // Contraseña: el administrador se guarda cifrado; el usuario estándar, legible para el admin
+            let pass = document.getElementById('usr_password').value.trim();
+            if (!pass) {
+                if (previo && previo.rol === rol && esAdmin && estaCifrada(previo.password)) pass = previo.password;
+                else return alert('Escribe una contraseña para este usuario.');
+            } else if (esAdmin) {
+                if (pass.length < 6) return alert('La contraseña de un administrador debe tener al menos 6 caracteres.');
+                pass = cifrarPassword(pass);
+            }
+
+            const datosUser = {
+                id: editId ? parseInt(editId) : Date.now(),
+                nombre: document.getElementById('usr_nombre').value.trim(),
+                username: username,
+                password: pass,
+                rol: rol,
+                permisos: {
+                    dashboard: esAdmin || document.getElementById('perm_dashboard').checked,
+                    computo: esAdmin || document.getElementById('perm_computo').checked,
+                    telefonos: esAdmin || document.getElementById('perm_telefonos').checked,
+                    resp_computo: esAdmin || document.getElementById('perm_resp_computo').checked,
+                    resp_telefonos: esAdmin || document.getElementById('perm_resp_telefonos').checked
+                },
+                acciones: leerAcciones(esAdmin)
+            };
+
+            if (db.usuarios.some(u => u.id !== datosUser.id && u.username.toLowerCase() === username.toLowerCase())) {
+                alert('El nombre de usuario ya está registrado.');
+                return;
+            }
+
+            if (previo) {
+                db.usuarios[db.usuarios.findIndex(u => u.id === previo.id)] = datosUser;
+                if (usuarioActual.id === datosUser.id) usuarioActual = db.usuarios.find(u => u.id === datosUser.id);
+            } else {
+                db.usuarios.push(datosUser);
+            }
+
+            cancelarEdicionUsuario();
+            guardarDB();
+            alert(esAdmin ? 'Administrador guardado exitosamente.' : 'Usuario guardado exitosamente.');
+        }
+
+        // Ajusta el formulario según el rol elegido
+        function alCambiarRol() {
+            const esAdmin = document.getElementById('usr_rol').value === 'ADMIN';
+            const ids = ['perm_dashboard', 'perm_computo', 'perm_telefonos', 'perm_resp_computo', 'perm_resp_telefonos'];
+            ids.forEach(id => {
+                const cb = document.getElementById(id);
+                if (esAdmin) cb.checked = true;
+                cb.disabled = esAdmin;
+            });
+            Object.keys(ACCIONES_POR_AREA).forEach(area => ACCIONES_POR_AREA[area].forEach(acc => {
+                const cb = document.getElementById(`act_${area}_${acc}`);
+                if (cb) { if (esAdmin) cb.checked = true; cb.disabled = esAdmin; }
+            }));
+            document.getElementById('usr_rol_hint').textContent = esAdmin
+                ? 'Acceso total a todas las áreas y gestión de usuarios.'
+                : 'Solo verá las áreas que marques.';
+
+            const editId = document.getElementById('usr_id_internal').value;
+            const previo = editId ? db.usuarios.find(u => u.id === parseInt(editId)) : null;
+            const conservable = !!(previo && previo.rol === 'ADMIN' && esAdmin && estaCifrada(previo.password));
+            const inputPass = document.getElementById('usr_password');
+            const hint = document.getElementById('usr_pass_hint');
+            inputPass.required = !conservable;
+            inputPass.placeholder = conservable ? 'Vacío = conservar la actual' : 'Asignar contraseña';
+            hint.classList.toggle('hidden', !esAdmin);
+            hint.textContent = esAdmin ? 'Se guarda cifrada: nadie podrá verla después (mín. 6 caracteres).' : '';
+
+            // No se puede cambiar el rol de uno mismo ni de la cuenta principal
+            const bloqueado = !!(previo && (previo.username === 'admin' || (usuarioActual && previo.id === usuarioActual.id)));
+            document.getElementById('usr_rol').disabled = bloqueado;
+        }
+
+        function editarUsuario(id) {
+            if (!usuarioActual || usuarioActual.rol !== 'ADMIN') return alert('Acceso denegado.');
+            const usr = db.usuarios.find(u => u.id === id);
+            if (!usr) return;
+
+            document.getElementById('usr_id_internal').value = usr.id;
+            document.getElementById('usr_nombre').value = usr.nombre;
+            document.getElementById('usr_username').value = usr.username;
+            document.getElementById('usr_password').value = usr.rol === 'ADMIN' ? '' : usr.password;
+            document.getElementById('usr_rol').value = usr.rol === 'ADMIN' ? 'ADMIN' : 'USUARIO';
+
+            const p = usr.permisos || {};
+            document.getElementById('perm_dashboard').checked = !!p.dashboard;
+            document.getElementById('perm_computo').checked = !!p.computo;
+            document.getElementById('perm_telefonos').checked = !!p.telefonos;
+            document.getElementById('perm_resp_computo').checked = !!p.resp_computo;
+            document.getElementById('perm_resp_telefonos').checked = !!p.resp_telefonos;
+            cargarAccionesForm(usr.acciones || null);
+            alCambiarRol();
+
+            document.getElementById('tituloFormUsuario').innerHTML = `<span class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-sm"><i class="fa-solid fa-user-pen"></i></span> Modificar Usuario`;
+            document.getElementById('btnCancelarUsuario').classList.remove('hidden');
+            document.getElementById('btnGuardarUsuario').className = "bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer";
+            document.getElementById('btnGuardarUsuario').innerHTML = `<i class="fa-solid fa-sync"></i> Actualizar Usuario`;
+        }
+
+        function cancelarEdicionUsuario() {
+            document.getElementById('formUsuario').reset();
+            document.getElementById('usr_id_internal').value = '';
+
+            document.getElementById('perm_dashboard').checked = false;
+            document.getElementById('perm_computo').checked = false;
+            document.getElementById('perm_telefonos').checked = false;
+            document.getElementById('perm_resp_computo').checked = false;
+            document.getElementById('perm_resp_telefonos').checked = false;
+
+            document.getElementById('tituloFormUsuario').innerHTML = `<span class="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center text-sm"><i class="fa-solid fa-user-plus"></i></span> Registrar / Modificar Usuario de Sistema`;
+            document.getElementById('btnCancelarUsuario').classList.add('hidden');
+            document.getElementById('btnGuardarUsuario').className = "bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer";
+            document.getElementById('btnGuardarUsuario').innerHTML = `<i class="fa-solid fa-save"></i> Guardar Usuario`;
+            alCambiarRol();
+        }
+
+        function renderizarUsuarios() {
+            const tbody = document.getElementById('tablaUsuarios');
+            tbody.innerHTML = '';
+            if (!usuarioActual || usuarioActual.rol !== 'ADMIN') return;
+
+            db.usuarios.forEach(usr => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/70 transition';
+
+                const p = usr.permisos || {};
+                const tagsPermisos = [
+                    p.dashboard ? '<span class="bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full text-[10px]">Dashboard</span>' : '',
+                    p.computo ? '<span class="bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full text-[10px]">Cómputo' + resumenAcc(usr, 'computo') + '</span>' : '',
+                    p.telefonos ? '<span class="bg-[#52B043]/15 text-[#52B043] border border-[#52B043]/30 px-2 py-0.5 rounded-full text-[10px]">Teléfonos' + resumenAcc(usr, 'telefonos') + '</span>' : '',
+                    p.resp_computo ? '<span class="bg-teal-500/15 text-teal-300 border border-teal-500/30 px-2 py-0.5 rounded-full text-[10px]">Resp. Cómputo' + resumenAcc(usr, 'resp_computo') + '</span>' : '',
+                    p.resp_telefonos ? '<span class="bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px]">Resp. Teléfonos' + resumenAcc(usr, 'resp_telefonos') + '</span>' : ''
+                ].filter(Boolean).join(' ');
+
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-white">${usr.nombre}</td>
+                    <td class="p-3 font-mono text-purple-300 font-bold">${usr.username}</td>
+                    <td class="p-3 font-mono text-amber-300 bg-amber-950/30 font-bold border-x border-slate-800/80">${usr.rol === 'ADMIN'
+                        ? '<span class="text-slate-400 font-normal"><i class="fa-solid fa-lock"></i> Cifrada (oculta)</span>'
+                        : `<span id="pw_${usr.id}" data-visible="0">••••••••</span> <button type="button" onclick="alternarPassword(${usr.id})" class="ml-2 text-slate-400 hover:text-amber-300 cursor-pointer" title="Mostrar / ocultar"><i class="fa-solid fa-eye"></i></button>`}</td>
+                    <td class="p-3"><span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] ${usr.rol === 'ADMIN' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-slate-800 text-slate-300 border border-slate-700'}">${usr.rol}</span></td>
+                    <td class="p-3 flex flex-wrap gap-1.5">${tagsPermisos || '<span class="text-slate-500 italic">Sin accesos permitidos</span>'}</td>
+                    <td class="p-3 text-center">
+                        ${usr.username !== 'admin' ? `
+                            <button onclick="editarUsuario(${usr.id})" class="text-amber-400 hover:text-amber-300 px-1.5 cursor-pointer" title="Editar">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            ${usuarioActual && usuarioActual.id === usr.id ? '' : `<button onclick="eliminarUsuario(${usr.id})" class="text-rose-400 hover:text-rose-300 px-1.5 cursor-pointer" title="Eliminar">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>`}
+                        ` : (usuarioActual && usuarioActual.id === usr.id ? '<button onclick="cambiarPasswordAdmin()" class="text-purple-300 hover:text-purple-200 cursor-pointer text-[11px] font-semibold" title="Cambiar mi contraseña"><i class="fa-solid fa-key"></i> Cambiar contraseña</button>' : '<span class="text-slate-500 italic">Protegido</span>')}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function eliminarUsuario(id) {
+            if (!usuarioActual || usuarioActual.rol !== 'ADMIN') return alert('Acceso denegado.');
+            const objetivo = db.usuarios.find(u => u.id === id);
+            if (!objetivo || objetivo.username === 'admin' || objetivo.id === usuarioActual.id) return alert('Esta cuenta no se puede eliminar.');
+            if (confirm('¿Deseas eliminar este usuario de la base de datos?')) {
+                db.usuarios = db.usuarios.filter(u => u.id !== id);
+                guardarDB();
+            }
+        }
+
+        // --- DASHBOARD METRICAS ---
+        function renderizarDashboard() {
+            const compDisp = db.inventario.filter(i => (i.estadoActivo || '').toUpperCase() === 'DISPONIBLE').length;
+            const compAsig = db.inventario.filter(i => (i.estadoActivo || '').toUpperCase() === 'ASIGNADO').length;
+            const compMant = db.inventario.filter(i => (i.estadoActivo || '').toUpperCase() === 'MANTENIMIENTO').length;
+            const compBaja = db.inventario.filter(i => (i.estadoActivo || '').toUpperCase() === 'BAJA').length;
+            const totalComp = db.inventario.length;
+
+            document.getElementById('dash_total_computo').textContent = `${totalComp} Equipos`;
+            document.getElementById('dash_comp_disponibles').textContent = compDisp;
+            document.getElementById('dash_comp_asignados').textContent = compAsig;
+            document.getElementById('dash_comp_mantenimiento').textContent = compMant;
+            document.getElementById('dash_comp_baja').textContent = compBaja;
+
+            const telDisp = db.telefonos.filter(t => (t.estadoActivo || '').toUpperCase() === 'DISPONIBLE').length;
+            const telAsig = db.telefonos.filter(t => (t.estadoActivo || '').toUpperCase() === 'ASIGNADO').length;
+            const telMant = db.telefonos.filter(t => (t.estadoActivo || '').toUpperCase() === 'MANTENIMIENTO').length;
+            const telBaja = db.telefonos.filter(t => (t.estadoActivo || '').toUpperCase() === 'BAJA').length;
+            const totalTel = db.telefonos.length;
+
+            document.getElementById('dash_total_telefonos').textContent = `${totalTel} Líneas`;
+            document.getElementById('dash_tel_disponibles').textContent = telDisp;
+            document.getElementById('dash_tel_asignados').textContent = telAsig;
+            document.getElementById('dash_tel_mantenimiento').textContent = telMant;
+            document.getElementById('dash_tel_baja').textContent = telBaja;
+
+            const respCompComp = db.responsivasComputo.filter(r => r.estatus === 'PROCESO COMPLETADO').length;
+            const respCompProc = db.responsivasComputo.filter(r => r.estatus !== 'PROCESO COMPLETADO').length;
+
+            const respTelComp = db.responsivasTelefonos.filter(r => r.estatus === 'PROCESO COMPLETADO').length;
+            const respTelProc = db.responsivasTelefonos.filter(r => r.estatus !== 'PROCESO COMPLETADO').length;
+
+            document.getElementById('dash_resp_comp_completadas').textContent = respCompComp;
+            document.getElementById('dash_resp_comp_proceso').textContent = respCompProc;
+            document.getElementById('dash_resp_tel_completadas').textContent = respTelComp;
+            document.getElementById('dash_resp_tel_proceso').textContent = respTelProc;
+
+            const totalEmitidas = db.responsivasComputo.length + db.responsivasTelefonos.length;
+            const totalCompletadas = respCompComp + respTelComp;
+            const totalProceso = respCompProc + respTelProc;
+
+            document.getElementById('dash_total_responsivas').textContent = totalEmitidas;
+            document.getElementById('dash_responsivas_completadas').textContent = totalCompletadas;
+            document.getElementById('dash_responsivas_proceso').textContent = totalProceso;
+        }
+
+        // --- INVENTARIO CÓMPUTO ---
+        function guardarActivo(e) {
+            if (!puede('computo', 'editar')) { e.preventDefault(); return alert(MSG_SIN_PERMISO); }
+            e.preventDefault();
+            const editId = document.getElementById('inv_id_internal').value;
+
+            const datosActivo = {
+                id: editId ? parseInt(editId) : Date.now(),
+                idActivo: document.getElementById('inv_id_activo').value.trim(),
+                empresa: document.getElementById('inv_empresa').value,
+                plazaFull: document.getElementById('inv_plaza').value.trim(),
+                plazaAbrev: obtenerAbreviatura(document.getElementById('inv_plaza').value),
+                nombreRed: document.getElementById('inv_nombre_red').value.trim(),
+                marca: document.getElementById('inv_marca').value.trim(),
+                tipo: document.getElementById('inv_tipo').value,
+                modelo: document.getElementById('inv_modelo').value.trim(),
+                color: document.getElementById('inv_color').value.trim(),
+                serial: document.getElementById('inv_serial').value.trim(),
+                passAdmin: document.getElementById('inv_pass_admin').value.trim(),
+                passAdminNew: document.getElementById('inv_pass_admin_new').value.trim(),
+                passUser: document.getElementById('inv_pass_user').value.trim(),
+                procesador: document.getElementById('inv_procesador').value.trim(),
+                ram: document.getElementById('inv_ram').value.trim(),
+                so: document.getElementById('inv_so').value.trim(),
+                office: document.getElementById('inv_office').value.trim(),
+                tecladoSerial: document.getElementById('inv_teclado_serial').value.trim(),
+                mouseSerial: document.getElementById('inv_mouse_serial').value.trim(),
+                estadoActivo: document.getElementById('inv_estado_activo').value,
+                asignadoAId: document.getElementById('inv_asignado_id').value.trim(),
+                colaborador: document.getElementById('inv_colaborador').value.trim()
+            };
+
+            if (editId) {
+                const index = db.inventario.findIndex(i => i.id === parseInt(editId));
+                if (index !== -1) db.inventario[index] = datosActivo;
+            } else {
+                if (db.inventario.some(item => item.idActivo.toLowerCase() === datosActivo.idActivo.toLowerCase())) {
+                    alert('El ID ACTIVO ya existe.');
+                    return;
+                }
+                db.inventario.push(datosActivo);
+            }
+
+            cancelarEdicion();
+            guardarDB();
+        }
+
+        function editarActivo(id) {
+            if (!puede('computo', 'editar')) return alert(MSG_SIN_PERMISO);
+            const item = db.inventario.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('inv_id_internal').value = item.id;
+            document.getElementById('inv_id_activo').value = item.idActivo || '';
+            document.getElementById('inv_plaza').value = item.plazaFull || '';
+            document.getElementById('inv_empresa').value = empresaDe(item.empresa);
+            document.getElementById('inv_nombre_red').value = item.nombreRed || '';
+            document.getElementById('inv_marca').value = item.marca || '';
+            document.getElementById('inv_tipo').value = item.tipo || '';
+            document.getElementById('inv_modelo').value = item.modelo || '';
+            document.getElementById('inv_color').value = item.color || '';
+            document.getElementById('inv_serial').value = item.serial || '';
+            document.getElementById('inv_pass_admin').value = item.passAdmin || '';
+            document.getElementById('inv_pass_admin_new').value = item.passAdminNew || '';
+            document.getElementById('inv_pass_user').value = item.passUser || '';
+            document.getElementById('inv_procesador').value = item.procesador || '';
+            document.getElementById('inv_ram').value = item.ram || '';
+            document.getElementById('inv_so').value = item.so || '';
+            document.getElementById('inv_office').value = item.office || '';
+            document.getElementById('inv_teclado_serial').value = item.tecladoSerial || '';
+            document.getElementById('inv_mouse_serial').value = item.mouseSerial || '';
+            document.getElementById('inv_estado_activo').value = item.estadoActivo || 'ASIGNADO';
+            document.getElementById('inv_asignado_id').value = item.asignadoAId || '';
+            document.getElementById('inv_colaborador').value = item.colaborador || '';
+
+            document.getElementById('tituloFormActivo').innerHTML = `<span class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-sm"><i class="fa-solid fa-pen-to-square"></i></span> Modificar Características de Activo`;
+            document.getElementById('btnCancelarEdicion').classList.remove('hidden');
+            document.getElementById('btnGuardarActivo').className = "bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer";
+            document.getElementById('btnGuardarActivo').innerHTML = `<i class="fa-solid fa-sync"></i> Actualizar Activo`;
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelarEdicion() {
+            document.getElementById('formActivo').reset();
+            document.getElementById('inv_id_internal').value = '';
+            document.getElementById('tituloFormActivo').innerHTML = `<span class="w-8 h-8 rounded-xl brand-gradient flex items-center justify-center text-white text-sm"><i class="fa-solid fa-plus"></i></span> Registrar / Modificar Equipo de Cómputo`;
+            document.getElementById('btnCancelarEdicion').classList.add('hidden');
+            document.getElementById('btnGuardarActivo').className = "brand-gradient brand-gradient-hover text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer";
+            document.getElementById('btnGuardarActivo').innerHTML = `<i class="fa-solid fa-save"></i> Guardar Activo`;
+        }
+
+        function renderizarInventario() {
+            const tbody = document.getElementById('tablaInventario');
+            const busqueda = document.getElementById('buscarInventario').value.toLowerCase();
+            tbody.innerHTML = '';
+
+            const filtrados = db.inventario.filter(item => 
+                (item.idActivo && item.idActivo.toLowerCase().includes(busqueda)) ||
+                (item.plazaAbrev && item.plazaAbrev.toLowerCase().includes(busqueda)) ||
+                (item.colaborador && item.colaborador.toLowerCase().includes(busqueda)) ||
+                (item.serial && item.serial.toLowerCase().includes(busqueda)) ||
+                (item.modelo && item.modelo.toLowerCase().includes(busqueda))
+            );
+
+            if (filtrados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="21" class="p-6 text-center text-slate-500">No hay registros de activos.</td></tr>`;
+                return;
+            }
+
+            filtrados.forEach(item => {
+                let badgeClass = 'bg-sky-500/15 text-sky-300 border border-sky-500/30';
+                if (item.estadoActivo === 'DISPONIBLE') badgeClass = 'bg-[#52B043]/15 text-[#52B043] border border-[#52B043]/35';
+                if (item.estadoActivo === 'MANTENIMIENTO') badgeClass = 'bg-amber-500/15 text-amber-300 border border-amber-500/35';
+                if (item.estadoActivo === 'BAJA') badgeClass = 'bg-rose-500/15 text-rose-300 border border-rose-500/35';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/75 transition';
+                tr.innerHTML = `
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono font-bold text-[#52B043]">${item.idActivo || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-black text-center text-white bg-slate-900/60">${item.plazaAbrev || 'N/A'}${badgeEmpresa(item.empresa)}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono text-slate-300">${item.nombreRed || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-200">${item.marca || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-bold text-slate-300">${item.tipo || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-200">${item.modelo || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-400">${item.color || 'N/A'}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono text-slate-300">${item.serial || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono text-slate-400">${item.passAdmin || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono text-slate-400">${item.passAdminNew || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono text-slate-400">${item.passUser || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-300">${item.procesador || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-center font-mono text-slate-300">${item.ram ? item.ram + ' GB' : ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-300">${item.so || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-300">${item.office || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono text-slate-400">${item.tecladoSerial || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono text-slate-400">${item.mouseSerial || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-center"><span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] ${badgeClass}">${item.estadoActivo || 'ASIGNADO'}</span></td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-center font-mono text-slate-400">${item.asignadoAId || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-semibold text-white">${item.colaborador || ''}</td>
+                    <td class="p-2.5 text-center flex justify-center gap-2">
+                        <button onclick="editarActivo(${item.id})" class="text-amber-400 hover:text-amber-300 p-1 cursor-pointer" title="Editar">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="eliminarActivo(${item.id})" class="text-rose-400 hover:text-rose-300 p-1 cursor-pointer" title="Eliminar">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function eliminarActivo(id) {
+            if (!puede('computo', 'eliminar')) return alert(MSG_SIN_PERMISO);
+            if (confirm('¿Deseas eliminar este registro del inventario?')) {
+                db.inventario = db.inventario.filter(i => i.id !== id);
+                guardarDB();
+            }
+        }
+
+        // --- CONTROL DE TELÉFONOS ---
+        function guardarTelefono(e) {
+            if (!puede('telefonos', 'editar')) { e.preventDefault(); return alert(MSG_SIN_PERMISO); }
+            e.preventDefault();
+            const editId = document.getElementById('tel_id_internal').value;
+
+            const datosTel = {
+                id: editId ? parseInt(editId) : Date.now(),
+                no: document.getElementById('tel_no').value.trim(),
+                linea: document.getElementById('tel_linea').value.trim(),
+                empleado: document.getElementById('tel_empleado').value.trim(),
+                puesto: document.getElementById('tel_puesto').value.trim(),
+                equipo: document.getElementById('tel_equipo').value.trim(),
+                imei: document.getElementById('tel_imei').value.trim(),
+                empresa: document.getElementById('tel_empresa').value,
+                plazaFull: document.getElementById('tel_plaza').value.trim(),
+                plazaAbrev: obtenerAbreviatura(document.getElementById('tel_plaza').value),
+                estadoActivo: document.getElementById('tel_estado_activo').value,
+                proyecto: document.getElementById('tel_proyecto').value.trim(),
+                observaciones: document.getElementById('tel_observaciones').value.trim(),
+                comentarios: document.getElementById('tel_comentarios').value.trim()
+            };
+
+            if (editId) {
+                const index = db.telefonos.findIndex(t => t.id === parseInt(editId));
+                if (index !== -1) db.telefonos[index] = datosTel;
+            } else {
+                db.telefonos.push(datosTel);
+            }
+
+            cancelarEdicionTelefono();
+            guardarDB();
+            alert('Registro de teléfono guardado con éxito.');
+        }
+
+        function editarTelefono(id) {
+            if (!puede('telefonos', 'editar')) return alert(MSG_SIN_PERMISO);
+            const item = db.telefonos.find(t => t.id === id);
+            if (!item) return;
+
+            document.getElementById('tel_id_internal').value = item.id;
+            document.getElementById('tel_no').value = item.no || '';
+            document.getElementById('tel_linea').value = item.linea || '';
+            document.getElementById('tel_empleado').value = item.empleado || '';
+            document.getElementById('tel_puesto').value = item.puesto || '';
+            document.getElementById('tel_equipo').value = item.equipo || '';
+            document.getElementById('tel_imei').value = item.imei || '';
+            document.getElementById('tel_plaza').value = item.plazaFull || '';
+            document.getElementById('tel_empresa').value = empresaDe(item.empresa);
+            document.getElementById('tel_estado_activo').value = item.estadoActivo || 'ASIGNADO';
+            document.getElementById('tel_proyecto').value = item.proyecto || '';
+            document.getElementById('tel_observaciones').value = item.observaciones || '';
+            document.getElementById('tel_comentarios').value = item.comentarios || '';
+
+            document.getElementById('tituloFormTelefono').innerHTML = `<span class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-sm"><i class="fa-solid fa-pen-to-square"></i></span> Modificar Registro de Teléfono`;
+            document.getElementById('btnCancelarTel').classList.remove('hidden');
+            document.getElementById('btnGuardarTel').className = "bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer";
+            document.getElementById('btnGuardarTel').innerHTML = `<i class="fa-solid fa-sync"></i> Actualizar Teléfono`;
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelarEdicionTelefono() {
+            document.getElementById('formTelefono').reset();
+            document.getElementById('tel_id_internal').value = '';
+            document.getElementById('tituloFormTelefono').innerHTML = `<span class="w-8 h-8 rounded-xl brand-gradient flex items-center justify-center text-white text-sm"><i class="fa-solid fa-mobile-screen"></i></span> Registrar / Modificar Teléfono`;
+            document.getElementById('btnCancelarTel').classList.add('hidden');
+            document.getElementById('btnGuardarTel').className = "brand-gradient brand-gradient-hover text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer";
+            document.getElementById('btnGuardarTel').innerHTML = `<i class="fa-solid fa-save"></i> Guardar Teléfono`;
+        }
+
+        function renderizarTelefonos() {
+            const tbody = document.getElementById('tablaTelefonos');
+            const busqueda = document.getElementById('buscarTelefono').value.toLowerCase();
+            tbody.innerHTML = '';
+
+            const filtrados = db.telefonos.filter(item => 
+                (item.no && item.no.toLowerCase().includes(busqueda)) ||
+                (item.linea && item.linea.toLowerCase().includes(busqueda)) ||
+                (item.empleado && item.empleado.toLowerCase().includes(busqueda)) ||
+                (item.imei && item.imei.toLowerCase().includes(busqueda)) ||
+                (item.plazaAbrev && item.plazaAbrev.toLowerCase().includes(busqueda))
+            );
+
+            if (filtrados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" class="p-6 text-center text-slate-500">No hay teléfonos registrados.</td></tr>`;
+                return;
+            }
+
+            filtrados.forEach(item => {
+                let badgeClass = 'bg-sky-500/15 text-sky-300 border border-sky-500/30';
+                if (item.estadoActivo === 'DISPONIBLE') badgeClass = 'bg-[#52B043]/15 text-[#52B043] border border-[#52B043]/35';
+                if (item.estadoActivo === 'MANTENIMIENTO') badgeClass = 'bg-amber-500/15 text-amber-300 border border-amber-500/35';
+                if (item.estadoActivo === 'BAJA') badgeClass = 'bg-rose-500/15 text-rose-300 border border-rose-500/35';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/75 transition';
+                tr.innerHTML = `
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono font-bold text-slate-300">${item.no || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono font-bold text-[#52B043]">${item.linea || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-semibold text-white">${item.empleado || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-400">${item.puesto || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-semibold text-slate-200">${item.equipo || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-mono text-slate-300">${item.imei || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 font-black text-center text-white bg-slate-900/60">${item.plazaAbrev || 'N/A'}${badgeEmpresa(item.empresa)}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-center"><span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] ${badgeClass}">${item.estadoActivo || 'ASIGNADO'}</span></td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-300">${item.proyecto || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-400">${item.observaciones || ''}</td>
+                    <td class="p-2.5 border-r border-slate-800/70 text-slate-400">${item.comentarios || ''}</td>
+                    <td class="p-2.5 text-center flex justify-center gap-2">
+                        <button onclick="editarTelefono(${item.id})" class="text-amber-400 hover:text-amber-300 p-1 cursor-pointer" title="Editar">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="eliminarTelefono(${item.id})" class="text-rose-400 hover:text-rose-300 p-1 cursor-pointer" title="Eliminar">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function eliminarTelefono(id) {
+            if (!puede('telefonos', 'eliminar')) return alert(MSG_SIN_PERMISO);
+            if (confirm('¿Deseas eliminar este registro de teléfono?')) {
+                db.telefonos = db.telefonos.filter(t => t.id !== id);
+                guardarDB();
+            }
+        }
+
+        // --- RESPONSIVAS CÓMPUTO ---
+        function actualizarSelectEquiposComputo() {
+            const select = document.getElementById('resp_comp_equipo');
+            select.innerHTML = '<option value="">Seleccione un equipo de cómputo disponible...</option>';
+            
+            const disponibles = db.inventario.filter(item => item.estadoActivo === 'DISPONIBLE');
+            
+            if (disponibles.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = "";
+                opt.textContent = "No hay equipos de cómputo disponibles";
+                opt.disabled = true;
+                select.appendChild(opt);
+                return;
+            }
+
+            disponibles.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.textContent = `[${item.idActivo}] (${item.plazaAbrev}) ${item.tipo} - ${item.marca} ${item.modelo} (SN: ${item.serial})`;
+                select.appendChild(opt);
+            });
+        }
+
+        function guardarResponsivaComputo(e) {
+            if (!puede('resp_computo', 'editar')) { e.preventDefault(); return alert(MSG_SIN_PERMISO); }
+            e.preventDefault();
+            const equipoId = parseInt(document.getElementById('resp_comp_equipo').value);
+            const equipo = db.inventario.find(i => i.id === equipoId);
+
+            if (!equipo) return alert('Selecciona un equipo de cómputo válido.');
+
+            const colaborador = document.getElementById('resp_comp_colaborador').value.trim();
+
+            const nuevaResp = {
+                id: Date.now(),
+                folio: 'RESP-PC-' + Math.floor(1000 + Math.random() * 9000),
+                colaborador: colaborador,
+                cargo: document.getElementById('resp_comp_cargo').value.trim(),
+                usuarioRed: document.getElementById('resp_comp_usuario_red').value.trim(),
+                area: document.getElementById('resp_comp_area').value.trim(),
+                correo: document.getElementById('resp_comp_correo').value.trim() || `${colaborador.toLowerCase().replace(/\s+/g, '.')}@${dominioEmpresa(document.getElementById('resp_comp_empresa').value)}`,
+                empresa: document.getElementById('resp_comp_empresa').value,
+                plazaFull: equipo.plazaFull || 'CIUDAD DE MEXICO',
+                plazaAbrev: equipo.plazaAbrev || 'CDMX',
+                observaciones: document.getElementById('resp_comp_observaciones').value.trim() || 'SE ENTREGA EQUIPO COMPLETO Y ALIMENTADOR DE ENERGIA',
+                equipoId: equipo.id,
+                fecha: new Date().toISOString().slice(0,10),
+                estatus: 'EN PROCESO DE FIRMA',
+                pdfFirmadoData: null
+            };
+
+            equipo.colaborador = colaborador;
+            equipo.estadoActivo = 'ASIGNADO';
+
+            db.responsivasComputo.push(nuevaResp);
+            guardarDB();
+            document.getElementById('formResponsivaComputo').reset();
+            alert('Responsiva de Cómputo creada con éxito.');
+        }
+
+        function renderizarResponsivasComputo() {
+            const tbody = document.getElementById('tablaResponsivasComputo');
+            tbody.innerHTML = '';
+
+            if (!db.responsivasComputo || db.responsivasComputo.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">No hay responsivas de cómputo registradas.</td></tr>`;
+                return;
+            }
+
+            db.responsivasComputo.forEach(item => {
+                const equipo = db.inventario.find(i => i.id === item.equipoId) || {};
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/75 transition';
+                
+                const badgeEstatus = item.estatus === 'PROCESO COMPLETADO' 
+                    ? `<span class="bg-[#52B043]/15 text-[#52B043] border border-[#52B043]/35 px-2.5 py-1 rounded-full font-bold text-[10px] inline-flex items-center justify-center gap-1"><i class="fa-solid fa-circle-check"></i> PROCESO COMPLETADO</span>`
+                    : `<span class="bg-amber-500/15 text-amber-300 border border-amber-500/35 px-2.5 py-1 rounded-full font-bold text-[10px] inline-flex items-center justify-center gap-1"><i class="fa-solid fa-clock"></i> EN PROCESO DE FIRMA</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-3 font-mono font-bold text-slate-300">${item.folio}</td>
+                    <td class="p-3 font-semibold text-white">${item.colaborador}</td>
+                    <td class="p-3 font-bold text-slate-300">${item.plazaAbrev || 'CDMX'}${badgeEmpresa(item.empresa || equipo.empresa)}</td>
+                    <td class="p-3 text-slate-400">${item.area} / ${item.cargo}</td>
+                    <td class="p-3 text-sky-400 font-semibold">${equipo.idActivo || 'N/A'} - ${equipo.marca || ''} ${equipo.modelo || ''}</td>
+                    <td class="p-3 font-mono text-slate-400">${item.fecha}</td>
+                    <td class="p-3 text-center">${badgeEstatus}</td>
+                    <td class="p-3 text-center flex justify-center items-center gap-2">
+                        <button onclick="verFormatoComputo(${item.id})" class="bg-sky-500/15 text-sky-300 border border-sky-500/35 hover:bg-sky-500/25 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-file-lines"></i> Formato
+                        </button>
+                        
+                        ${item.pdfFirmadoData 
+                            ? `<button onclick="verPdfFirmado('computo', '${item.id}')" class="brand-gradient text-white px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer">
+                                <i class="fa-solid fa-file-pdf"></i> Ver PDF
+                               </button>`
+                            : `<label class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1">
+                                <i class="fa-solid fa-upload"></i> Subir PDF
+                                <input type="file" accept=".pdf" onchange="subirPdfFirmado(event, 'computo', ${item.id})" class="hidden">
+                               </label>`
+                        }
+
+                        <button onclick="liberarResponsivaComputo(${item.id})" class="bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer">
+                            Liberar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- RESPONSIVAS TELÉFONOS ---
+        function actualizarSelectEquiposTelefonos() {
+            const select = document.getElementById('resp_tel_equipo');
+            select.innerHTML = '<option value="">Seleccione un teléfono disponible...</option>';
+            
+            const disponibles = db.telefonos.filter(item => item.estadoActivo === 'DISPONIBLE');
+
+            if (disponibles.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = "";
+                opt.textContent = "No hay teléfonos disponibles";
+                opt.disabled = true;
+                select.appendChild(opt);
+                return;
+            }
+            
+            disponibles.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.textContent = `[Línea: ${item.linea}] - ${item.equipo} (IMEI: ${item.imei})`;
+                select.appendChild(opt);
+            });
+        }
+
+        function guardarResponsivaTelefono(e) {
+            if (!puede('resp_telefonos', 'editar')) { e.preventDefault(); return alert(MSG_SIN_PERMISO); }
+            e.preventDefault();
+            const telId = parseInt(document.getElementById('resp_tel_equipo').value);
+            const telefono = db.telefonos.find(t => t.id === telId);
+
+            if (!telefono) return alert('Selecciona un teléfono válido.');
+
+            const colaborador = document.getElementById('resp_tel_colaborador').value.trim();
+
+            const nuevaResp = {
+                id: Date.now(),
+                folio: 'RESP-TEL-' + Math.floor(1000 + Math.random() * 9000),
+                colaborador: colaborador,
+                cargo: document.getElementById('resp_tel_cargo').value.trim(),
+                area: document.getElementById('resp_tel_area').value.trim(),
+                correo: document.getElementById('resp_tel_correo').value.trim() || `${colaborador.toLowerCase().replace(/\s+/g, '.')}@${dominioEmpresa(document.getElementById('resp_tel_empresa').value)}`,
+                empresa: document.getElementById('resp_tel_empresa').value,
+                costo: document.getElementById('resp_tel_costo').value.trim(),
+                observaciones: document.getElementById('resp_tel_observaciones').value.trim() || 'SE ENTREGA EQUIPO.',
+                telId: telefono.id,
+                fecha: new Date().toISOString().slice(0,10),
+                estatus: 'EN PROCESO DE FIRMA',
+                chkChip: document.getElementById('chk_chip').checked,
+                chkCargador: document.getElementById('chk_cargador').checked,
+                chkCable: document.getElementById('chk_cable').checked,
+                chkFunda: document.getElementById('chk_funda').checked,
+                chkConfiguracion: document.getElementById('chk_configuracion').checked,
+                chkOutlook: document.getElementById('chk_outlook').checked,
+                chkTeams: document.getElementById('chk_teams').checked,
+                chkApps: document.getElementById('chk_apps').checked,
+                pdfFirmadoData: null
+            };
+
+            telefono.empleado = colaborador;
+            telefono.estadoActivo = 'ASIGNADO';
+
+            db.responsivasTelefonos.push(nuevaResp);
+            guardarDB();
+            document.getElementById('formResponsivaTelefono').reset();
+            alert('Responsiva de Teléfono creada con éxito.');
+        }
+
+        function renderizarResponsivasTelefonos() {
+            const tbody = document.getElementById('tablaResponsivasTelefonos');
+            tbody.innerHTML = '';
+
+            if (!db.responsivasTelefonos || db.responsivasTelefonos.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">No hay responsivas de teléfonos registradas.</td></tr>`;
+                return;
+            }
+
+            db.responsivasTelefonos.forEach(item => {
+                const tel = db.telefonos.find(t => t.id === item.telId) || {};
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/75 transition';
+                
+                const badgeEstatus = item.estatus === 'PROCESO COMPLETADO' 
+                    ? `<span class="bg-[#52B043]/15 text-[#52B043] border border-[#52B043]/35 px-2.5 py-1 rounded-full font-bold text-[10px] inline-flex items-center justify-center gap-1"><i class="fa-solid fa-circle-check"></i> PROCESO COMPLETADO</span>`
+                    : `<span class="bg-amber-500/15 text-amber-300 border border-amber-500/35 px-2.5 py-1 rounded-full font-bold text-[10px] inline-flex items-center justify-center gap-1"><i class="fa-solid fa-clock"></i> EN PROCESO DE FIRMA</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-3 font-mono font-bold text-slate-300">${item.folio}</td>
+                    <td class="p-3 font-semibold text-white">${item.colaborador}</td>
+                    <td class="p-3 font-bold text-slate-300">${tel.plazaAbrev || 'CDMX'}${badgeEmpresa(item.empresa || tel.empresa)}</td>
+                    <td class="p-3 text-[#52B043] font-mono font-bold">${tel.linea || 'N/A'}<br><span class="text-[10px] text-slate-400 font-mono">${tel.imei || ''}</span></td>
+                    <td class="p-3 text-slate-200 font-semibold">${tel.equipo || 'N/A'}</td>
+                    <td class="p-3 font-mono text-slate-400">${item.fecha}</td>
+                    <td class="p-3 text-center">${badgeEstatus}</td>
+                    <td class="p-3 text-center flex justify-center items-center gap-2">
+                        <button onclick="verFormatoTelefono(${item.id})" class="bg-[#52B043]/15 text-[#52B043] border border-[#52B043]/35 hover:bg-[#52B043]/25 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-file-lines"></i> Formato
+                        </button>
+                        
+                        ${item.pdfFirmadoData 
+                            ? `<button onclick="verPdfFirmado('telefono', '${item.id}')" class="brand-gradient text-white px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer">
+                                <i class="fa-solid fa-file-pdf"></i> Ver PDF
+                               </button>`
+                            : `<label class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1">
+                                <i class="fa-solid fa-upload"></i> Subir PDF
+                                <input type="file" accept=".pdf" onchange="subirPdfFirmado(event, 'telefono', ${item.id})" class="hidden">
+                               </label>`
+                        }
+
+                        <button onclick="liberarResponsivaTelefono(${item.id})" class="bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer">
+                            Liberar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- MANEJO DE PDF FIRMADOS ---
+        function subirPdfFirmado(event, tipo, respId) {
+            const file = event.target.files[0];
+            if (!file || file.type !== 'application/pdf') return alert('Solo se admiten archivos PDF.');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const pdfBase64 = e.target.result;
+                const arr = tipo === 'computo' ? db.responsivasComputo : db.responsivasTelefonos;
+                const resp = arr.find(r => r.id === respId);
+                if (resp) {
+                    resp.pdfFirmadoData = pdfBase64;
+                    resp.estatus = 'PROCESO COMPLETADO';
+                    guardarDB();
+                    alert('PDF adjuntado con éxito.');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function verPdfFirmado(tipo, respId) {
+            const arr = tipo === 'computo' ? db.responsivasComputo : db.responsivasTelefonos;
+            const resp = arr.find(r => r.id === parseInt(respId));
+            if (resp && resp.pdfFirmadoData) {
+                document.getElementById('iframePdf').src = resp.pdfFirmadoData;
+                document.getElementById('modalPdf').classList.remove('hidden');
+            } else {
+                alert('No se encontró el PDF.');
+            }
+        }
+
+        function cerrarModalPdf() {
+            document.getElementById('modalPdf').classList.add('hidden');
+            document.getElementById('iframePdf').src = '';
+        }
+
+        function liberarResponsivaComputo(id) {
+            if (!puede('resp_computo', 'editar')) return alert(MSG_SIN_PERMISO);
+            if (confirm('¿Deseas desasignar este activo de cómputo?')) {
+                const resp = db.responsivasComputo.find(r => r.id === id);
+                if (resp) {
+                    const equipo = db.inventario.find(i => i.id === resp.equipoId);
+                    if (equipo) { equipo.colaborador = ''; equipo.estadoActivo = 'DISPONIBLE'; }
+                    db.responsivasComputo = db.responsivasComputo.filter(r => r.id !== id);
+                    guardarDB();
+                }
+            }
+        }
+
+        function liberarResponsivaTelefono(id) {
+            if (!puede('resp_telefonos', 'editar')) return alert(MSG_SIN_PERMISO);
+            if (confirm('¿Deseas desasignar este teléfono?')) {
+                const resp = db.responsivasTelefonos.find(r => r.id === id);
+                if (resp) {
+                    const tel = db.telefonos.find(t => t.id === resp.telId);
+                    if (tel) { tel.empleado = ''; tel.estadoActivo = 'DISPONIBLE'; }
+                    db.responsivasTelefonos = db.responsivasTelefonos.filter(r => r.id !== id);
+                    guardarDB();
+                }
+            }
+        }
+
+        // --- VER FORMATOS DE IMPRESIÓN ---
+        function verFormatoComputo(id) {
+            const resp = db.responsivasComputo.find(r => r.id === id);
+            const equipo = db.inventario.find(i => i.id === resp.equipoId);
+            if (!resp || !equipo) return alert('Información incompleta.');
+            aplicarMarcaFormato('vistaFormatoComputo', resp.empresa || equipo.empresa);
+
+            document.getElementById('vc_folio').textContent = resp.folio;
+            document.getElementById('vc_fecha').textContent = resp.fecha;
+            document.getElementById('vc_nombre').textContent = resp.colaborador;
+            document.getElementById('vc_cargo').textContent = resp.cargo;
+            document.getElementById('vc_usuario_red').textContent = resp.usuarioRed || 'N/A';
+            document.getElementById('vc_area').textContent = resp.area;
+            document.getElementById('vc_correo').textContent = resp.correo;
+            document.getElementById('vc_plaza').textContent = resp.plazaAbrev || 'CDMX';
+
+            document.getElementById('vc_tipo').textContent = equipo.tipo || 'N/A';
+            document.getElementById('vc_red').textContent = equipo.nombreRed || 'N/A';
+            document.getElementById('vc_marca').textContent = equipo.marca || 'N/A';
+            document.getElementById('vc_modelo').textContent = equipo.modelo || 'N/A';
+            document.getElementById('vc_serial').textContent = equipo.serial || 'N/A';
+            document.getElementById('vc_procesador').textContent = equipo.procesador || 'N/A';
+            document.getElementById('vc_ram').textContent = equipo.ram ? equipo.ram + ' GB' : 'N/A';
+            document.getElementById('vc_so').textContent = equipo.so || 'N/A';
+            document.getElementById('vc_teclado').textContent = equipo.tecladoSerial || 'SI';
+            document.getElementById('vc_mouse').textContent = equipo.mouseSerial || 'SI';
+
+            document.getElementById('vc_observaciones').textContent = resp.observaciones;
+            document.getElementById('vc_firma_nombre').textContent = resp.colaborador;
+
+            const formatoTel = document.getElementById('vistaFormatoTelefono');
+            formatoTel.classList.add('hidden');
+            formatoTel.classList.remove('modo-impresion');
+
+            const formatoComp = document.getElementById('vistaFormatoComputo');
+            formatoComp.classList.remove('hidden');
+            formatoComp.classList.add('modo-impresion');
+
+            document.querySelector('main').classList.add('hidden');
+            document.querySelector('header').classList.add('hidden');
+            
+            window.scrollTo(0, 0);
+        }
+
+        function verFormatoTelefono(id) {
+            const resp = db.responsivasTelefonos.find(r => r.id === id);
+            const tel = db.telefonos.find(t => t.id === resp.telId);
+            if (!resp || !tel) return alert('Información de teléfono incompleta.');
+            aplicarMarcaFormato('vistaFormatoTelefono', resp.empresa || tel.empresa);
+
+            document.getElementById('vt_folio').textContent = resp.folio;
+            document.getElementById('vt_fecha').textContent = resp.fecha;
+            document.getElementById('vt_nombre').textContent = resp.colaborador;
+            document.getElementById('vt_cargo').textContent = resp.cargo;
+            document.getElementById('vt_numero').textContent = tel.linea || 'N/A';
+            document.getElementById('vt_correo').textContent = resp.correo;
+            document.getElementById('vt_area').textContent = resp.area;
+            document.getElementById('vt_plaza').textContent = tel.plazaAbrev || 'CDMX';
+
+            const partesEquipo = (tel.equipo || '').split(' ');
+            document.getElementById('vt_marca').textContent = partesEquipo[0] || 'MOTOROLA';
+            document.getElementById('vt_modelo').textContent = partesEquipo.slice(1).join(' ') || tel.equipo;
+            document.getElementById('vt_imei').textContent = tel.imei || 'N/A';
+
+            document.getElementById('vt_chk_chip').textContent = resp.chkChip ? '☒' : '☐';
+            document.getElementById('vt_chk_cargador').textContent = resp.chkCargador ? '☒' : '☐';
+            document.getElementById('vt_chk_cable').textContent = resp.chkCable ? '☒' : '☐';
+            document.getElementById('vt_chk_funda').textContent = resp.chkFunda ? '☒' : '☐';
+            document.getElementById('vt_chk_configuracion').textContent = resp.chkConfiguracion ? '☒' : '☐';
+            document.getElementById('vt_chk_outlook').textContent = resp.chkOutlook ? '☒' : '☐';
+            document.getElementById('vt_chk_teams').textContent = resp.chkTeams ? '☒' : '☐';
+            document.getElementById('vt_chk_apps').textContent = resp.chkApps ? '☒' : '☐';
+
+            document.getElementById('vt_costo').textContent = resp.costo || '$2,399.00';
+            document.getElementById('vt_observaciones').textContent = resp.observaciones || 'SE ENTREGA EQUIPO.';
+            document.getElementById('vt_firma_recibe_nombre').textContent = resp.colaborador;
+
+            const formatoComp = document.getElementById('vistaFormatoComputo');
+            formatoComp.classList.add('hidden');
+            formatoComp.classList.remove('modo-impresion');
+
+            const formatoTel = document.getElementById('vistaFormatoTelefono');
+            formatoTel.classList.remove('hidden');
+            formatoTel.classList.add('modo-impresion');
+
+            document.querySelector('main').classList.add('hidden');
+            document.querySelector('header').classList.add('hidden');
+
+            window.scrollTo(0, 0);
+        }
+
+        function cerrarVistaFormato() {
+            const comp = document.getElementById('vistaFormatoComputo');
+            const tel = document.getElementById('vistaFormatoTelefono');
+
+            comp.classList.add('hidden');
+            comp.classList.remove('modo-impresion');
+
+            tel.classList.add('hidden');
+            tel.classList.remove('modo-impresion');
+
+            document.querySelector('main').classList.remove('hidden');
+            document.querySelector('header').classList.remove('hidden');
+        }
+
+        // --- EXPORTAR EXCEL ---
+        function obtenerDatosComputoMapeados() {
+            return db.inventario.map(item => ({
+                "ID ACTIVO": item.idActivo || "",
+                "EMPRESA": EMPRESAS[empresaDe(item.empresa)].nombre,
+                "PLAZA": item.plazaAbrev || "",
+                "NOMBRE DE RED": item.nombreRed || "",
+                "MARCA": item.marca || "",
+                "TIPO": item.tipo || "",
+                "MODELO": item.modelo || "",
+                "COLOR": item.color || "",
+                "SERIAL": item.serial || "",
+                "PASSWORD ADMIN": item.passAdmin || "",
+                "PASSWORD ADMIN NEW": item.passAdminNew || "",
+                "PASSWORD USER": item.passUser || "",
+                "PROCESADOR": item.procesador || "",
+                "RAM (GB)": item.ram || "",
+                "SISTEMA OPERATIVO": item.so || "",
+                "OFFICE": item.office || "",
+                "TECLADO SERIAL": item.tecladoSerial || "",
+                "MOUSE SERIAL": item.mouseSerial || "",
+                "ESTADO ACTIVO": item.estadoActivo || "",
+                "ASIGNADO A (ID)": item.asignadoAId || "",
+                "COLABORADOR": item.colaborador || ""
+            }));
+        }
+
+        function obtenerDatosTelefonosMapeados() {
+            return db.telefonos.map(item => ({
+                "NO.": item.no || "",
+                "TELEFONO": item.linea || "",
+                "NOMBRE DEL EMPLEADO": item.empleado || "",
+                "PUESTO": item.puesto || "",
+                "EQUIPO": item.equipo || "",
+                "IMEI": item.imei || "",
+                "EMPRESA": EMPRESAS[empresaDe(item.empresa)].nombre,
+                "PLAZA": item.plazaAbrev || "",
+                "ESTADO ACTIVO": item.estadoActivo || "",
+                "PROYECTO": item.proyecto || "",
+                "OBSERVACIONES": item.observaciones || "",
+                "COMENTARIOS": item.comentarios || ""
+            }));
+        }
+
+        function exportarExcelComputo() {
+            if (!puede('computo', 'exportar')) return alert(MSG_SIN_PERMISO);
+            const datos = obtenerDatosComputoMapeados();
+            if (datos.length === 0) return alert("No hay datos en Cómputo.");
+            const ws = XLSX.utils.json_to_sheet(datos);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "INVENTARIO COMPUTO");
+            XLSX.writeFile(wb, `INVENTARIO_COMPUTO_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
+        function exportarExcelTelefonos() {
+            if (!puede('telefonos', 'exportar')) return alert(MSG_SIN_PERMISO);
+            const datos = obtenerDatosTelefonosMapeados();
+            if (datos.length === 0) return alert("No hay datos en Teléfonos.");
+            const ws = XLSX.utils.json_to_sheet(datos);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "CONTROL TELEFONOS");
+            XLSX.writeFile(wb, `CONTROL_TELEFONOS_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
+        function exportarExcelGeneral() {
+            if (!puede('computo', 'exportar') || !puede('telefonos', 'exportar')) return alert(MSG_SIN_PERMISO);
+            const datosComputo = obtenerDatosComputoMapeados();
+            const datosTelefonos = obtenerDatosTelefonosMapeados();
+            if (datosComputo.length === 0 && datosTelefonos.length === 0) return alert("Sin datos que exportar.");
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosComputo), "INVENTARIO COMPUTO");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosTelefonos), "CONTROL TELEFONOS");
+            XLSX.writeFile(wb, `REPORTE_GENERAL_PIBE_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
+        // --- IMPORTAR EXCEL ---
+        function procesarFilasComputo(rawArr) {
+            return rawArr.map((row, index) => {
+                const plazaRaw = String(row["PLAZA"] || row["Plaza"] || "CIUDAD DE MEXICO").trim();
+                return {
+                    id: Date.now() + index,
+                    idActivo: String(row["ID ACTIVO"] || row["ID_ACTIVO"] || `ACT-${index}`).trim(),
+                    empresa: empresaDesdeTexto(row["EMPRESA"] || row["Empresa"]),
+                    plazaFull: plazaRaw,
+                    plazaAbrev: obtenerAbreviatura(plazaRaw),
+                    nombreRed: String(row["NOMBRE DE RED"] || "").trim(),
+                    marca: String(row["MARCA"] || "").trim(),
+                    tipo: String(row["TIPO"] || "LAPTOP").trim(),
+                    modelo: String(row["MODELO"] || "").trim(),
+                    color: String(row["COLOR"] || "").trim(),
+                    serial: String(row["SERIAL"] || "").trim(),
+                    passAdmin: String(row["PASSWORD ADMIN"] || "").trim(),
+                    passAdminNew: String(row["PASSWORD ADMIN NEW"] || "").trim(),
+                    passUser: String(row["PASSWORD USER"] || "").trim(),
+                    procesador: String(row["PROCESADOR"] || "").trim(),
+                    ram: String(row["RAM (GB)"] || "").trim(),
+                    so: String(row["SISTEMA OPERATIVO"] || "").trim(),
+                    office: String(row["OFFICE"] || "").trim(),
+                    tecladoSerial: String(row["TECLADO SERIAL"] || "").trim(),
+                    mouseSerial: String(row["MOUSE SERIAL"] || "").trim(),
+                    estadoActivo: String(row["ESTADO ACTIVO"] || "ASIGNADO").trim(),
+                    asignadoAId: String(row["ASIGNADO A (ID)"] || "").trim(),
+                    colaborador: String(row["COLABORADOR"] || "").trim()
+                };
+            });
+        }
+
+        function procesarFilasTelefonos(rawArr) {
+            return rawArr.map((row, index) => {
+                const plazaRaw = String(row["PLAZA"] || row["Plaza"] || "CIUDAD DE MEXICO").trim();
+                return {
+                    id: Date.now() + index + 5000,
+                    no: String(row["NO."] || row["NO"] || index + 1).trim(),
+                    linea: String(row["TELEFONO"] || row["LINEA"] || "").trim(),
+                    empleado: String(row["NOMBRE DEL EMPLEADO"] || row["EMPLEADO"] || "").trim(),
+                    puesto: String(row["PUESTO"] || "").trim(),
+                    equipo: String(row["EQUIPO"] || "").trim(),
+                    imei: String(row["IMEI"] || "").trim(),
+                    empresa: empresaDesdeTexto(row["EMPRESA"] || row["Empresa"]),
+                    plazaFull: plazaRaw,
+                    plazaAbrev: obtenerAbreviatura(plazaRaw),
+                    estadoActivo: String(row["ESTADO ACTIVO"] || "ASIGNADO").trim(),
+                    proyecto: String(row["PROYECTO"] || "").trim(),
+                    observaciones: String(row["OBSERVACIONES"] || "").trim(),
+                    comentarios: String(row["COMENTARIOS"] || "").trim()
+                };
+            });
+        }
+
+        function importarEspecifico(event, destino) {
+            if (!puede(destino === 'telefonos' ? 'telefonos' : 'computo', 'importar')) { event.target.value = ''; return alert(MSG_SIN_PERMISO); }
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+                    if (destino === 'computo') {
+                        db.inventario = procesarFilasComputo(rawData);
+                        guardarDB();
+                        cambiarTab('tab-inventario');
+                        alert(`Cómputo actualizado: ${db.inventario.length} equipos cargados.`);
+                    } else if (destino === 'telefonos') {
+                        db.telefonos = procesarFilasTelefonos(rawData);
+                        guardarDB();
+                        cambiarTab('tab-telefonos');
+                        alert(`Teléfonos actualizado: ${db.telefonos.length} líneas cargadas.`);
+                    }
+                } catch (err) {
+                    alert("Error al leer el archivo de Excel.");
+                }
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function importarExcelAuto(event) {
+            if (!puede('computo', 'importar') || !puede('telefonos', 'importar')) { event.target.value = ''; return alert(MSG_SIN_PERMISO); }
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    const sheetComputo = workbook.SheetNames.find(n => n.toUpperCase().includes('COMPUTO') || n.toUpperCase().includes('INVENTARIO'));
+                    if (sheetComputo) {
+                        const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetComputo]);
+                        db.inventario = procesarFilasComputo(raw);
+                    }
+
+                    const sheetTel = workbook.SheetNames.find(n => n.toUpperCase().includes('TELEFONO') || n.toUpperCase().includes('CELULAR'));
+                    if (sheetTel) {
+                        const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetTel]);
+                        db.telefonos = procesarFilasTelefonos(raw);
+                    }
+
+                    guardarDB();
+                    alert(`Importación Auto completada.\n- Equipos de Cómputo: ${db.inventario.length}\n- Control de Teléfonos: ${db.telefonos.length}`);
+                } catch (err) {
+                    alert("Error en la importación automática.");
+                }
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- NAVEGACIÓN ENTRE TABS ---
+        function cambiarTab(tabId) {
+            // Solo se puede abrir un área si el usuario tiene permiso
+            const permisoPorTab = { 'tab-dashboard': 'dashboard', 'tab-inventario': 'computo', 'tab-telefonos': 'telefonos', 'tab-responsivas-computo': 'resp_computo', 'tab-responsivas-telefonos': 'resp_telefonos' };
+            if (!usuarioActual) return;
+            if (usuarioActual.rol !== 'ADMIN') {
+                if (tabId === 'tab-admin-users' || !(usuarioActual.permisos || {})[permisoPorTab[tabId]]) return;
+            }
+            document.getElementById('tab-dashboard').classList.add('hidden');
+            document.getElementById('tab-inventario').classList.add('hidden');
+            document.getElementById('tab-telefonos').classList.add('hidden');
+            document.getElementById('tab-responsivas-computo').classList.add('hidden');
+            document.getElementById('tab-responsivas-telefonos').classList.add('hidden');
+            document.getElementById('tab-admin-users').classList.add('hidden');
+
+            const inactiveBtn = "py-2 px-4 text-xs font-bold rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/70 flex items-center gap-2 cursor-pointer transition";
+            
+            const btns = ['btn-tab-dashboard', 'btn-tab-inventario', 'btn-tab-telefonos', 'btn-tab-responsivas-computo', 'btn-tab-responsivas-telefonos', 'btn-tab-admin-users'];
+            btns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    const estaOculto = btn.classList.contains('hidden');
+                    btn.className = id === 'btn-tab-admin-users'
+                        ? "py-2 px-4 text-xs font-bold rounded-xl text-purple-300 bg-purple-950/50 border border-purple-700/40 hover:bg-purple-900/60 flex items-center gap-2 cursor-pointer transition"
+                        : inactiveBtn;
+                    if (estaOculto) btn.classList.add('hidden');
+                }
+            });
+
+            const targetSection = document.getElementById(tabId);
+            if (targetSection) targetSection.classList.remove('hidden');
+
+            const activeMap = {
+                'tab-dashboard': { id: 'btn-tab-dashboard', cls: "py-2 px-4 text-xs font-bold rounded-xl brand-gradient text-white shadow flex items-center gap-2 cursor-pointer transition" },
+                'tab-inventario': { id: 'btn-tab-inventario', cls: "py-2 px-4 text-xs font-bold rounded-xl brand-gradient text-white shadow flex items-center gap-2 cursor-pointer transition" },
+                'tab-telefonos': { id: 'btn-tab-telefonos', cls: "py-2 px-4 text-xs font-bold rounded-xl brand-gradient text-white shadow flex items-center gap-2 cursor-pointer transition" },
+                'tab-responsivas-computo': { id: 'btn-tab-responsivas-computo', cls: "py-2 px-4 text-xs font-bold rounded-xl bg-sky-600 text-white shadow flex items-center gap-2 cursor-pointer transition" },
+                'tab-responsivas-telefonos': { id: 'btn-tab-responsivas-telefonos', cls: "py-2 px-4 text-xs font-bold rounded-xl brand-gradient text-white shadow flex items-center gap-2 cursor-pointer transition" },
+                'tab-admin-users': { id: 'btn-tab-admin-users', cls: "py-2 px-4 text-xs font-bold rounded-xl bg-purple-600 text-white shadow flex items-center gap-2 cursor-pointer transition" }
+            };
+
+            if (activeMap[tabId]) {
+                const activeBtn = document.getElementById(activeMap[tabId].id);
+                if (activeBtn) activeBtn.className = activeMap[tabId].cls;
+            }
+        }
+    </script>
+</body>
+</html>
