@@ -97,6 +97,8 @@ body.autenticado #sesion-info { display: flex; }
 <link rel="manifest" href="../../manifest.json">
 <meta name="theme-color" content="#006837">
 <link rel="icon" href="../../imagenes/iconos/icono_correos.png">
+<script src="../../js/config.js"></script>
+<script src="../../js/nube.js"></script>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-[#52B043] selection:text-slate-950">
 <style>
@@ -627,7 +629,7 @@ body.autenticado #sesion-info { display: flex; }
         // ==========================================
         // CONFIGURACIÓN Y ESTADO GLOBAL
         // ==========================================
-        const STORAGE_KEY = 'gestor_correos_logistic_v1';
+        const STORAGE_KEY = 'gestor_correos_logistic_v2';
 
         const CORPORATE_PROVIDERS = ['PIBE Logistic', 'CLOC Logistic', 'Tapa Logistic 360'];
         const EXTERNAL_PROVIDERS = ['Gmail', 'Outlook', 'Hotmail'];
@@ -650,7 +652,8 @@ body.autenticado #sesion-info { display: flex; }
         // ==========================================
         // INICIALIZACIÓN Y DATOS DE EJEMPLO
         // ==========================================
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await (window.PibeCloud && window.PibeCloud.listo);
             initDatePickerToday();
             loadFromLocalStorage();
             regenerateCreatePassword();
@@ -724,103 +727,8 @@ body.autenticado #sesion-info { display: flex; }
                 }
             }
 
-            // Datos iniciales de demostración
-            const todayStr = getFormattedTodayDisplay();
-            const todayCode = getFormattedTodayYYYYMMDD();
-            emailsData = [
-                {
-                    id: 'seed-1',
-                    provider: 'PIBE Logistic',
-                    category: 'corporativo',
-                    firstName: 'Carlos Alberto',
-                    lastName: 'Mendoza Ruiz',
-                    area: 'Sistemas',
-                    email: 'c.mendoza@pibelogistic.com',
-                    password: `Pibe#${todayCode}*k9L`,
-                    status: 'Activo',
-                    createdAt: todayStr,
-                    notes: 'Administrador principal de infraestructura TI'
-                },
-                {
-                    id: 'seed-2',
-                    provider: 'PIBE Logistic',
-                    category: 'corporativo',
-                    firstName: 'Departamento',
-                    lastName: 'Monitoreo',
-                    area: 'Monitoreo',
-                    email: 'monitoreo@pibelogistic.com',
-                    password: `${todayCode}$mN4!pQ`,
-                    status: 'Activo',
-                    createdAt: todayStr,
-                    notes: 'Cuenta grupal turno 24/7 GPS'
-                },
-                {
-                    id: 'seed-3',
-                    provider: 'CLOC Logistic',
-                    category: 'corporativo',
-                    firstName: 'Fernanda',
-                    lastName: 'Salazar Gómez',
-                    area: 'Mesa de Control',
-                    email: 'f.salazar@cloclogistic.com',
-                    password: `Cloc@${todayCode}#x7R`,
-                    status: 'Activo',
-                    createdAt: todayStr,
-                    notes: 'Coordinación de embarques nacionales'
-                },
-                {
-                    id: 'seed-4',
-                    provider: 'Tapa Logistic 360',
-                    category: 'corporativo',
-                    firstName: 'Roberto',
-                    lastName: 'Villalobos',
-                    area: 'Operaciones',
-                    email: 'r.villalobos@tapalogistic360.com',
-                    password: `Tapa!${todayCode}*z2W`,
-                    status: 'Activo',
-                    createdAt: todayStr,
-                    notes: 'Gerencia de Operaciones'
-                },
-                {
-                    id: 'seed-5',
-                    provider: 'Gmail',
-                    category: 'externo',
-                    firstName: 'Laura',
-                    lastName: 'Jiménez',
-                    area: 'Contabilidad',
-                    email: 'contabilidad.pibelogistic@gmail.com',
-                    password: `${todayCode}&vB8#mT`,
-                    status: 'Activo',
-                    createdAt: todayStr,
-                    notes: 'Recepción de facturas y respaldo fiscal'
-                },
-                {
-                    id: 'seed-6',
-                    provider: 'Outlook',
-                    category: 'externo',
-                    firstName: 'Héctor',
-                    lastName: 'Domínguez',
-                    area: 'Tráfico',
-                    email: 'h.dominguez@outlook.com',
-                    password: `Out#${todayCode}$q5P`,
-                    status: 'Pendiente',
-                    createdAt: todayStr,
-                    notes: 'Cuenta externa para enlace con proveedores'
-                },
-                {
-                    id: 'seed-7',
-                    provider: 'Hotmail',
-                    category: 'externo',
-                    firstName: 'Sofía',
-                    lastName: 'Castillo',
-                    area: 'Recursos Humanos',
-                    email: 'recursoshumanos.cloc@hotmail.com',
-                    password: `Hot*${todayCode}!n3K`,
-                    status: 'Activo',
-                    createdAt: todayStr,
-                    notes: 'Reclutamiento de operadores'
-                }
-            ];
-            saveToLocalStorage();
+            // La lista inicia vacía: los correos se capturan desde el panel de creación
+            emailsData = [];
         }
 
         function saveToLocalStorage() {

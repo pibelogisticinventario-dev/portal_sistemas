@@ -97,6 +97,8 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#006837">
 <link rel="icon" href="imagenes/iconos/icon-192.png">
+<script src="js/config.js"></script>
+<script src="js/nube.js"></script>
 </head>
 <body class="min-h-screen flex flex-col justify-between antialiased selection:bg-[#52B043] selection:text-slate-950">
 
@@ -326,7 +328,7 @@
         // CONSTANTES Y CONFIGURACIÓN POR DEFECTO
         // ==========================================
         const ROUTES_STORAGE_KEY = 'PIBE_LAUNCHER_ROUTES_V3';
-        const EMAILS_DB_KEY = 'gestor_correos_logistic_v1';
+        const EMAILS_DB_KEY = 'gestor_correos_logistic_v2';
         const INVENTORY_DB_KEY = 'PIBE_SYSTEM_DB_V14';
 
         const DEFAULT_ROUTES = {
@@ -341,7 +343,8 @@
         // ==========================================
         // INICIALIZACIÓN
         // ==========================================
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await (window.PibeCloud && window.PibeCloud.listo);
             document.getElementById('footer-year').textContent = new Date().getFullYear();
             loadRouteConfig();
             applyRoutesToDOM();

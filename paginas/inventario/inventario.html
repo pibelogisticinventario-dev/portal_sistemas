@@ -192,6 +192,8 @@ body.sin-editar-resp_computo [onclick^="liberarResponsivaComputo("], body.sin-ed
 <link rel="manifest" href="../../manifest.json">
 <meta name="theme-color" content="#006837">
 <link rel="icon" href="../../imagenes/iconos/icono_equipos.png">
+<script src="../../js/config.js"></script>
+<script src="../../js/nube.js"></script>
 </head>
 <body class="min-h-screen font-sans antialiased selection:bg-[#52B043] selection:text-slate-950">
 <style>
@@ -926,6 +928,49 @@ body.sin-editar-resp_computo [onclick^="liberarResponsivaComputo("], body.sin-ed
                         <input type="text" id="resp_comp_observaciones" placeholder="Ej. SE ENTREGA EQUIPO COMPLETO Y ALIMENTADOR DE ENERGIA" class="w-full input-dark px-3.5 py-2.5">
                     </div>
 
+                    <div class="lg:col-span-3 border-t border-slate-800 pt-3.5">
+                        <label class="block font-bold text-sky-300 mb-2.5">Software corporativo instalado (se imprime en la responsiva):</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_office" checked class="w-4 h-4 accent-sky-500 rounded"> Microsoft Office Suite (Word, Excel, PPT)
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_antivirus" checked class="w-4 h-4 accent-sky-500 rounded"> Antivirus Corporativo Defender
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_project" class="w-4 h-4 accent-sky-500 rounded"> Microsoft Project
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_visio" class="w-4 h-4 accent-sky-500 rounded"> Microsoft Visio
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_rar" class="w-4 h-4 accent-sky-500 rounded"> Compresor de Archivos RAR/Zip
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_java" class="w-4 h-4 accent-sky-500 rounded"> Java
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_acrobat" class="w-4 h-4 accent-sky-500 rounded"> Adobe Acrobat Reader
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_vpn" class="w-4 h-4 accent-sky-500 rounded"> Cisco AnyConnect VPN
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_access" class="w-4 h-4 accent-sky-500 rounded"> Microsoft Access
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_outlook" checked class="w-4 h-4 accent-sky-500 rounded"> Microsoft Outlook
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_chrome" checked class="w-4 h-4 accent-sky-500 rounded"> Google Chrome & Microsoft Edge
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-200">
+                                <input type="checkbox" id="sw_otros" checked class="w-4 h-4 accent-sky-500 rounded"> Otros
+                            </label>
+                        </div>
+                        <input type="text" id="sw_otros_texto" placeholder="Si marcas &quot;Otros&quot;, escribe cuál(es) (opcional)" class="mt-2.5 w-full input-dark px-3.5 py-2.5">
+                    </div>
+
                     <div class="flex justify-end lg:col-span-3 pt-2 border-t border-slate-800/80">
                         <button type="submit" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer">
                             <i class="fa-solid fa-check"></i> Generar Responsiva Cómputo
@@ -1191,20 +1236,7 @@ body.sin-editar-resp_computo [onclick^="liberarResponsivaComputo("], body.sin-ed
             <div class="pibe-green-header font-bold text-center py-1 uppercase tracking-wider mb-1">
                 SOFTWARE CORPORATIVO INSTALADO
             </div>
-            <table class="w-full border-collapse border border-black text-xs">
-                <tr>
-                    <td class="border border-black p-1 w-5/12">Microsoft Office Suite (Word, Excel, PPT)</td>
-                    <td class="border border-black p-1 text-center w-1/12"><input type="checkbox" checked disabled></td>
-                    <td class="border border-black p-1 w-5/12">Adobe Acrobat Reader</td>
-                    <td class="border border-black p-1 text-center w-1/12"><input type="checkbox" checked disabled></td>
-                </tr>
-                <tr>
-                    <td class="border border-black p-1">Antivirus Corporativo Defender</td>
-                    <td class="border border-black p-1 text-center"><input type="checkbox" checked disabled></td>
-                    <td class="border border-black p-1">Cisco AnyConnect VPN</td>
-                    <td class="border border-black p-1 text-center"><input type="checkbox" disabled></td>
-                </tr>
-            </table>
+            <table id="vc_software_tabla" class="w-full border-collapse border border-black text-xs"></table>
         </div>
 
         <div class="mb-4">
@@ -1480,7 +1512,8 @@ body.sin-editar-resp_computo [onclick^="liberarResponsivaComputo("], body.sin-ed
             responsivasTelefonos: []
         };
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await (window.PibeCloud && window.PibeCloud.listo);
             cargarDB();
             aplicarPermisosVista();
             renderizarDashboard();
@@ -1577,6 +1610,41 @@ body.sin-editar-resp_computo [onclick^="liberarResponsivaComputo("], body.sin-ed
             const nombres = { editar: 'editar', eliminar: 'eliminar', exportar: 'exportar', importar: 'importar' };
             const lista = (ACCIONES_POR_AREA[area] || []).filter(k => a[k]).map(k => nombres[k]);
             return ' · ' + (lista.length ? lista.join('/') : 'solo ver');
+        }
+
+        // --- SOFTWARE CORPORATIVO INSTALADO (responsiva de cómputo) ---
+        const SOFTWARE_CORP = [
+            ['office', 'Microsoft Office Suite (Word, Excel, PPT)'], ['antivirus', 'Antivirus Corporativo Defender'], ['project', 'Microsoft Project'],
+            ['visio', 'Microsoft Visio'], ['rar', 'Compresor de Archivos RAR/Zip'], ['java', 'Java'],
+            ['acrobat', 'Adobe Acrobat Reader'], ['vpn', 'Cisco AnyConnect VPN'], ['access', 'Microsoft Access'],
+            ['outlook', 'Microsoft Outlook'], ['chrome', 'Google Chrome & Microsoft Edge'], ['otros', 'Otros']
+        ];
+        // Responsivas creadas antes de esta opción conservan lo que ya mostraban
+        const SOFTWARE_ANTERIOR = { office: true, antivirus: true, acrobat: true };
+
+        function leerSoftwareForm() {
+            const o = {};
+            SOFTWARE_CORP.forEach(([id]) => { o[id] = document.getElementById('sw_' + id).checked; });
+            return o;
+        }
+
+        function pintarSoftwareFormato(resp) {
+            const sw = resp.software || SOFTWARE_ANTERIOR;
+            const tabla = document.getElementById('vc_software_tabla');
+            tabla.innerHTML = '';
+            const celda = (tr, texto, clase) => { const td = document.createElement('td'); td.className = clase; td.textContent = texto; tr.appendChild(td); return td; };
+            const marca = (tr, activo) => {
+                const td = document.createElement('td'); td.className = 'border border-black p-1 text-center w-1/12';
+                const c = document.createElement('input'); c.type = 'checkbox'; c.disabled = true; c.checked = !!activo; td.appendChild(c); tr.appendChild(td);
+            };
+            const etiqueta = ([id, nombre]) => (id === 'otros' && sw.otros && resp.softwareOtros) ? 'Otros: ' + resp.softwareOtros : nombre;
+            const mitad = SOFTWARE_CORP.length / 2;
+            for (let i = 0; i < mitad; i++) {
+                const izq = SOFTWARE_CORP[i], der = SOFTWARE_CORP[i + mitad], tr = document.createElement('tr');
+                celda(tr, etiqueta(izq), 'border border-black p-1 w-5/12'); marca(tr, sw[izq[0]]);
+                celda(tr, etiqueta(der), 'border border-black p-1 w-5/12'); marca(tr, sw[der[0]]);
+                tabla.appendChild(tr);
+            }
         }
 
         // --- EMPRESAS (PIBE LOGISTIC / CLOC LOGISTIC) ---
@@ -2421,6 +2489,8 @@ body.sin-editar-resp_computo [onclick^="liberarResponsivaComputo("], body.sin-ed
                 empresa: document.getElementById('resp_comp_empresa').value,
                 plazaFull: equipo.plazaFull || 'CIUDAD DE MEXICO',
                 plazaAbrev: equipo.plazaAbrev || 'CDMX',
+                software: leerSoftwareForm(),
+                softwareOtros: document.getElementById('sw_otros_texto').value.trim(),
                 observaciones: document.getElementById('resp_comp_observaciones').value.trim() || 'SE ENTREGA EQUIPO COMPLETO Y ALIMENTADOR DE ENERGIA',
                 equipoId: equipo.id,
                 fecha: new Date().toISOString().slice(0,10),
@@ -2694,6 +2764,7 @@ body.sin-editar-resp_computo [onclick^="liberarResponsivaComputo("], body.sin-ed
             document.getElementById('vc_mouse').textContent = equipo.mouseSerial || 'SI';
 
             document.getElementById('vc_observaciones').textContent = resp.observaciones;
+            pintarSoftwareFormato(resp);
             document.getElementById('vc_firma_nombre').textContent = resp.colaborador;
 
             const formatoTel = document.getElementById('vistaFormatoTelefono');
