@@ -6,5 +6,5 @@
 //  Pasos completos en el README.md
 // ============================================================
 window.PIBE_NUBE = window.PIBE_NUBE || {};
-window.PIBE_NUBE.databaseURL = window.PIBE_NUBE.databaseURL || '';
+window.PIBE_NUBE.databaseURL = window.PIBE_NUBE.databaseURL || 'https://pibe-hub-ti-default-rtdb.firebaseio.com';
 window.PIBE_NUBE.ruta = window.PIBE_NUBE.ruta || 'pibe';
